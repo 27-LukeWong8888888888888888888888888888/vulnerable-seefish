@@ -1,0 +1,19 @@
+{
+  "name": "campus-lab-desktop",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Intentionally vulnerable security-lab Electron client (courseware). Do not deploy.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron --no-sandbox .",
+    "start:packaged": "electron --no-sandbox app.asar",
+    "pack": "node scripts/pack-asar.js",
+    "smoke": "LAB_ELECTRON_SMOKE=1 LAB_ELECTRON_NO_SANDBOX=1 electron --no-sandbox .",
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@electron/asar": "^4.3.1",
+    "electron": "^44.4.5"
+  }
+}

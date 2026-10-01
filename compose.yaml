@@ -1,0 +1,82 @@
+name: campus-lab-booking
+
+# PostgreSQL + Express API (Phase 2) + simulated lab device (Phase 4).
+# The api bridges host -> internal via lab-edge (internal networks block
+# host ingress to published ports); db and lab-device stay internal-only.
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-labuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-labpass-dev-only}
+      POSTGRES_DB: ${POSTGRES_DB:-campus_lab}
+    networks:
+      - lab-internal
+    volumes:
+      # Postgres 18+ images expect the volume mounted at /var/lib/postgresql
+      # (the image manages the data subdirectory itself).
+      - pgdata:/var/lib/postgresql
+      - ./services/api/sql:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      API_PORT: ${API_PORT:-3000}
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-3600}
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-labuser}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-labpass-dev-only}
+      PGDATABASE: ${POSTGRES_DB:-campus_lab}
+    ports:
+      # Loopback-only exposure: the lab never serves beyond this host.
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    networks:
+      - lab-internal
+      - lab-edge
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  # Simulated internal laboratory device. NO published ports and NO lab-edge
+  # membership: it can only be reached by containers on lab-internal (the api,
+  # in Phase 5 via SSRF). It is deliberately unreachable from the host.
+  lab-device:
+    build:
+      context: .
+      dockerfile: services/device/Dockerfile
+    networks:
+      - lab-internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/status >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+networks:
+  # internal: true = no external egress and no host reachability. The API
+  # reaches the db and the lab device over it.
+  lab-internal:
+    internal: true
+  # Non-internal edge network: exists only so the host can reach the api's
+  # loopback-published port. No database or device traffic ever crosses it.
+  lab-edge:
+
+volumes:
+  pgdata:

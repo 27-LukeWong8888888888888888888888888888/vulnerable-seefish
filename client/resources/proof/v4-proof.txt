@@ -1,0 +1,15 @@
+Lab proof file — V4 unsafe IPC path traversal (synthetic coursework artifact)
+=============================================================================
+
+If you are reading this through the desktop client's file viewer, then a
+renderer-controlled path of '../proof/v4-proof.txt' escaped the intended
+resources/manuals/ directory: the page called window.lab.readFile(), the
+preload forwarded the string verbatim over IPC, and the main-process handler
+joined it onto the manuals directory with no path validation.
+
+Proof: LAB{unsafe_ipc_path_traversal}
+
+Scope: this file is the designated proof artifact for the V4 exercise. The
+lab demonstration stops here — reading arbitrary host files (system
+passwords, SSH keys, browser profiles, user documents, credentials) is NOT
+part of this coursework and must not be attempted.

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Campus Lab Booking — Desktop Client</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>Campus Lab Booking</h1>
+  <div id="status-bar">booting…</div>
+</header>
+
+<main>
+  <section id="auth">
+    <h2 id="auth-heading">Login</h2>
+    <p class="lede">Book campus lab equipment, manage your reservations, and report faults.</p>
+    <div class="row" id="login-form">
+      <input id="login-username" placeholder="username" autocomplete="off">
+      <input id="login-password" type="password" placeholder="password">
+      <button id="btn-login">Log in</button>
+    </div>
+    <div class="hint" id="login-hint">Use a lab account — seed accounts are listed in the README.</div>
+    <div class="row" id="session-bar" hidden>
+      <span id="session-label"></span>
+      <button id="btn-logout">Log out</button>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+  <section id="equipment">
+    <h2>Equipment</h2>
+    <div class="row">
+      <select id="equip-status">
+        <option value="">(no status filter)</option>
+        <option>available</option>
+        <option>in_use</option>
+        <option>maintenance</option>
+        <option>retired</option>
+      </select>
+      <button id="btn-equip-list">List equipment</button>
+    </div>
+    <div class="out" id="equip-out"></div>
+  </section>
+
+  <section id="reservations">
+    <h2>Reservations</h2>
+    <div class="row">
+      <input id="res-search-q" placeholder="search purpose (q)">
+      <button id="btn-res-search">Search</button>
+      <button id="btn-res-list">List my reservations</button>
+    </div>
+    <div class="row">
+      <label class="fld"><span>Equipment ID</span><input id="res-create-equipment" type="number" placeholder="e.g. 1" class="narrow"></label>
+      <input id="res-create-starts" type="datetime-local">
+      <input id="res-create-ends" type="datetime-local">
+      <input id="res-create-purpose" placeholder="purpose">
+      <button id="btn-res-create">Create</button>
+    </div>
+    <div class="row">
+      <label class="fld"><span>Reservation ID</span><input id="res-update-id" type="number" placeholder="e.g. 99" class="narrow"></label>
+      <select id="res-update-status">
+        <option value="">(keep status)</option>
+        <option value="cancelled">cancelled</option>
+      </select>
+      <button id="btn-res-update">Update / cancel</button>
+    </div>
+    <div class="out" id="res-out"></div>
+  </section>
+
+  <section id="faults">
+    <h2>Fault reports</h2>
+    <div class="row">
+      <button id="btn-fault-list">List my reports</button>
+    </div>
+    <div class="row">
+      <label class="fld"><span>Equipment ID</span><input id="fault-equipment" type="number" placeholder="e.g. 1" class="narrow"></label>
+      <input id="fault-title" placeholder="title">
+      <select id="fault-severity">
+        <option value="">(severity)</option>
+        <option>low</option>
+        <option>medium</option>
+        <option>high</option>
+      </select>
+      <input id="fault-description" placeholder="description (optional)">
+      <button id="btn-fault-create">Submit report</button>
+    </div>
+    <div class="out" id="fault-out"></div>
+  </section>
+
+  <section id="diagnostics">
+    <h2>Diagnostics (technician)</h2>
+    <div class="row">
+      <label class="fld"><span>Equipment ID</span><input id="diag-run-equipment" type="number" placeholder="e.g. 1" class="narrow"></label>
+      <button id="btn-diag-run">Run diagnostic check</button>
+    </div>
+    <div class="row">
+      <label class="fld"><span>Equipment ID</span><input id="diag-fetch-equipment" type="number" placeholder="e.g. 1" class="narrow"></label>
+      <input id="diag-fetch-target" placeholder="target URL" class="wide">
+      <button id="btn-diag-fetch">Fetch URL</button>
+    </div>
+    <div class="out" id="diag-out"></div>
+  </section>
+
+  <section id="v1">
+    <h2>Field-service fleet sweep</h2>
+    <div class="row">
+      <button id="btn-sweep">Run fleet sweep</button>
+    </div>
+    <div class="hint">Fleet-wide equipment and diagnostics sweep for field-service staff.</div>
+    <div class="out" id="sweep-out"></div>
+  </section>
+
+  <section id="v4">
+    <h2>File viewer</h2>
+    <div class="row">
+      <input id="v4-path" class="wide" placeholder="manual file name, e.g. equipment-manual.txt">
+      <button id="btn-v4-read">Open file</button>
+    </div>
+    <div class="hint">Displays an equipment manual from the application's document store.</div>
+    <pre class="out mono" id="v4-out"></pre>
+  </section>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

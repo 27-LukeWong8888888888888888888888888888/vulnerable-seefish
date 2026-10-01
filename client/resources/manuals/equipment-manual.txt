@@ -1,0 +1,20 @@
+CAMPUS LAB EQUIPMENT — OPERATOR MANUAL (synthetic coursework document)
+=====================================================================
+
+EQ-1001 Environmental Chamber XL
+--------------------------------
+1. Power on and allow a 15-minute thermal soak before loading samples.
+2. Setpoint range: -40 C to +180 C. Ramp rate: 3 C/min.
+3. Calibration check is due every 12 months; the instrument reports its
+   own diagnostic endpoint over the campus-internal lab network.
+4. If the chamber reports errorCount > 0 on its diagnostics endpoint,
+   file a fault report and move samples to the backup unit.
+
+EQ-1002 DNA Sequencer 4500
+--------------------------
+1. Run the optical alignment self-test after every 50 runs.
+2. Keep the flow-cell bay at 20-25 C; humidity below 60 %.
+3. Reserved usage is enforced through the booking system — check the
+   reservations list before powering up.
+
+All data in this document is synthetic. (security-lab coursework)

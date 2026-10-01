@@ -1,0 +1,15 @@
+{
+  "name": "campus-lab-booking-api",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Intentionally vulnerable campus lab booking API (Phase 2: RC4 envelope, auth, equipment, fault reports)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

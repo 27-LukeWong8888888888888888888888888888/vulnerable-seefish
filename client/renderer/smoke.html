@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>electron smoke</title></head>
+<body>
+<pre id="out">running…</pre>
+<script>
+(async () => {
+  const lines = [];
+  const log = (s) => { lines.push(s); document.getElementById('out').textContent = lines.join('\n'); };
+  const done = (ok, detail) => window.lab && window.lab.smokeDone(ok, detail);
+  try {
+    log('[1] window.lab surface: ' + (window.lab ? Object.keys(window.lab).sort().join(',') : 'MISSING'));
+    if (!window.lab) throw new Error('window.lab missing');
+    if (typeof window.lab.readFile !== 'function') throw new Error('window.lab.readFile missing');
+
+    const manual = await window.lab.readFile('equipment-manual.txt');
+    log('[2] normal manuals read ok, first line: ' + manual.split('\n')[0]);
+
+    const proof = await window.lab.readFile('../proof/v4-proof.txt');
+    const flagOk = /LAB\{unsafe_ipc_path_traversal\}/.test(proof);
+    log('[3] traversal read ok (' + proof.length + ' chars), flag present: ' + flagOk);
+    if (!flagOk) throw new Error('proof flag missing');
+
+    const login = await window.lab.login('alice', 'StudentPass!23');
+    log('[4] login over IPC+RC4: ' + login.user.username + ' / role ' + login.user.role);
+
+    const me = await window.lab.api('/api/auth/me', {});
+    log('[5] auth/me via envelope: HTTP ' + me.status + ' user ' + (me.body.user && me.body.user.username));
+    if (me.status !== 200) throw new Error('auth/me failed');
+
+    const eq = await window.lab.api('/api/equipment/list', {});
+    log('[6] equipment/list rows: ' + (Array.isArray(eq.body) ? eq.body.length : 'NOT-ARRAY'));
+
+    await window.lab.logout();
+    log('[7] logout ok');
+    done(true, 'all checks passed');
+  } catch (err) {
+    log('SMOKE ERROR: ' + err.message);
+    done(false, err.message);
+  }
+})();
+</script>
+</body>
+</html>

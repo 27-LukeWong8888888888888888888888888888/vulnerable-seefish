@@ -1,0 +1,10 @@
+{
+  "appName": "Campus Lab Booking — Desktop Client",
+  "apiBase": "http://127.0.0.1:3000",
+  "fieldService": {
+    "endpoint": "/api/field-service/fleet-sweep",
+    "header": "X-Field-Token",
+    "token": "FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48",
+    "note": "SYNTHETIC coursework credential for the V1 hard-coded-token exercise. NOT a real secret. In Phase 7 this resources/ tree is packaged into the Electron ASAR; recovering the token from the package is the V1 demonstration. Do not replace with a real credential."
+  }
+}
