@@ -145,8 +145,8 @@ fi
 section "4. Protocol and API regression suites"
 run_grep "protocol unit tests (7/7)" "^# fail 0" \
   docker run --rm -v "$REPO/shared:/src" -w /src/protocol node:22-alpine node --test
-run_grep "API test suites phase2+3+5 (28/28)" "^# fail 0" \
-  docker compose exec -T api node --test services/api/test/phase2.test.js services/api/test/phase3.test.js services/api/test/phase5.test.js
+run_grep "API test suites phase2+3+5+bugfix (34/34)" "^# fail 0" \
+  docker compose exec -T api node --test services/api/test/phase2.test.js services/api/test/phase3.test.js services/api/test/phase5.test.js services/api/test/bugfix.test.js
 run_grep "device + network topology checks (9/9)" "ALL 9 CHECKS PASSED" \
   bash scripts/verify-device.sh
 

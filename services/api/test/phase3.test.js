@@ -195,10 +195,11 @@ test('3. update/cancel: owners edit or cancel their own; other students are reje
   assert.equal(r.status, 200);
   assert.equal(r.decrypted.status, 'cancelled');
 
-  // staff can manage any reservation, including restoring status
+  // staff can manage any reservation — but cancelled is a terminal state
+  // (bug-hunt B5 fix), so restoring status is rejected with 409
   r = await encRequest(s, '/api/reservations/update', { token: tech, id, status: 'active' });
-  assert.equal(r.status, 200);
-  assert.equal(r.decrypted.status, 'active');
+  assert.equal(r.status, 409);
+  assert.equal(r.decrypted.error, 'conflict');
 
   r = await encRequest(s, '/api/reservations/update', { token: alice, id: 99999, status: 'cancelled' });
   assert.equal(r.status, 404);

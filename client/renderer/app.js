@@ -61,10 +61,17 @@
     container.innerHTML = '<div class="error-note">' + esc(action + ' failed: ' + msg + ' (HTTP ' + res.status + ')') + '</div>';
   }
 
+  // Bumped on every logout; guard() captures it per click so responses that
+  // resolve after a logout (previous user's in-flight requests) are dropped
+  // instead of rendering into the new session's view.
+  let sessionEpoch = 0;
+
   async function guard(fn, label) {
+    const epoch = sessionEpoch;
     try {
-      await fn();
+      await fn(() => epoch !== sessionEpoch);
     } catch (err) {
+      if (epoch !== sessionEpoch) return;
       setStatus((label ? label + ' failed: ' : 'Error: ') + friendlyHttp(err.message), true);
     }
   }
@@ -100,14 +107,18 @@
     return v === '' ? undefined : Number(v);
   }
 
-  $('btn-login').addEventListener('click', () => guard(async () => {
-    const res = await window.lab.login($('login-username').value.trim(), $('login-password').value);
+  $('btn-login').addEventListener('click', () => guard(async (stale) => {
+    const username = $('login-username').value.trim();
+    const password = $('login-password').value;
     $('login-password').value = '';
+    const res = await window.lab.login(username, password);
+    if (stale()) return;
     applyView({ user: res.user });
     setStatus('Logged in as ' + res.user.username + ' (' + res.user.role + ')');
   }, 'Login'));
 
   $('btn-logout').addEventListener('click', () => guard(async () => {
+    sessionEpoch += 1;
     await window.lab.logout();
     applyView({ user: null });
     document.querySelectorAll('.out').forEach((el) => { el.textContent = ''; });
@@ -116,41 +127,54 @@
     setStatus('Logged out');
   }));
 
-  $('btn-equip-list').addEventListener('click', () => guard(async () => {
+  $('btn-equip-list').addEventListener('click', () => guard(async (stale) => {
     const status = $('equip-status').value;
     const res = await window.lab.api('/api/equipment/list', status ? { status } : {});
+    if (stale()) return;
     renderTable($('equip-out'), res.status === 200 ? res.body : [res.body]);
   }));
 
-  $('btn-res-search').addEventListener('click', () => guard(async () => {
+  $('btn-res-search').addEventListener('click', () => guard(async (stale) => {
     const res = await window.lab.api('/api/reservations/search', { q: $('res-search-q').value });
+    if (stale()) return;
     renderTable($('res-out'), res.status === 200 ? res.body : [res.body]);
   }));
 
-  $('btn-res-list').addEventListener('click', () => guard(async () => {
+  $('btn-res-list').addEventListener('click', () => guard(async (stale) => {
     const res = await window.lab.api('/api/reservations/list', {});
+    if (stale()) return;
     renderTable($('res-out'), res.status === 200 ? res.body : [res.body]);
   }));
 
-  $('btn-res-create').addEventListener('click', () => guard(async () => {
-    const res = await window.lab.api('/api/reservations/create', {
-      equipmentId: num('res-create-equipment'),
-      startsAt: toIso($('res-create-starts').value),
-      endsAt: toIso($('res-create-ends').value),
-      purpose: $('res-create-purpose').value || undefined
-    });
-    if (res.status === 200 || res.status === 201) {
-      setStatus('Reservation created (id ' + res.body.id + ')');
-    } else {
-      renderError($('res-out'), 'Create reservation', res);
+  $('btn-res-create').addEventListener('click', () => guard(async (stale) => {
+    const btn = $('btn-res-create');
+    btn.disabled = true;
+    try {
+      const res = await window.lab.api('/api/reservations/create', {
+        equipmentId: num('res-create-equipment'),
+        startsAt: toIso($('res-create-starts').value),
+        endsAt: toIso($('res-create-ends').value),
+        purpose: $('res-create-purpose').value || undefined
+      });
+      if (stale()) return;
+      if (res.status === 200 || res.status === 201) {
+        setStatus('Reservation created (id ' + res.body.id + ')');
+        ['res-create-equipment', 'res-create-starts', 'res-create-ends', 'res-create-purpose']
+          .forEach((id) => { $(id).value = ''; });
+      } else {
+        renderError($('res-out'), 'Create reservation', res);
+      }
+    } finally {
+      btn.disabled = false;
     }
   }));
 
-  $('btn-res-update').addEventListener('click', () => guard(async () => {
+  $('btn-res-update').addEventListener('click', () => guard(async (stale) => {
     const payload = { id: num('res-update-id') };
     const status = $('res-update-status').value;
     if (status) payload.status = status;
     const res = await window.lab.api('/api/reservations/update', payload);
+    if (stale()) return;
     if (res.status === 200) {
       setStatus('Reservation updated');
     } else {
@@ -158,42 +182,55 @@
     }
   }));
 
-  $('btn-fault-list').addEventListener('click', () => guard(async () => {
+  $('btn-fault-list').addEventListener('click', () => guard(async (stale) => {
     const res = await window.lab.api('/api/fault-reports/list', {});
+    if (stale()) return;
     renderTable($('fault-out'), res.status === 200 ? res.body : [res.body]);
   }));
 
-  $('btn-fault-create').addEventListener('click', () => guard(async () => {
-    const res = await window.lab.api('/api/fault-reports/create', {
-      equipmentId: num('fault-equipment'),
-      title: $('fault-title').value,
-      severity: $('fault-severity').value || undefined,
-      description: $('fault-description').value || undefined
-    });
-    if (res.status === 200 || res.status === 201) {
-      setStatus('Fault report submitted (id ' + res.body.id + ')');
-    } else {
-      renderError($('fault-out'), 'Submit report', res);
+  $('btn-fault-create').addEventListener('click', () => guard(async (stale) => {
+    const btn = $('btn-fault-create');
+    btn.disabled = true;
+    try {
+      const res = await window.lab.api('/api/fault-reports/create', {
+        equipmentId: num('fault-equipment'),
+        title: $('fault-title').value,
+        severity: $('fault-severity').value || undefined,
+        description: $('fault-description').value || undefined
+      });
+      if (stale()) return;
+      if (res.status === 200 || res.status === 201) {
+        setStatus('Fault report submitted (id ' + res.body.id + ')');
+        ['fault-equipment', 'fault-title', 'fault-severity', 'fault-description']
+          .forEach((id) => { $(id).value = ''; });
+      } else {
+        renderError($('fault-out'), 'Submit report', res);
+      }
+    } finally {
+      btn.disabled = false;
     }
   }));
 
-  $('btn-diag-run').addEventListener('click', () => guard(async () => {
+  $('btn-diag-run').addEventListener('click', () => guard(async (stale) => {
     const res = await window.lab.api('/api/diagnostics/run', { equipmentId: num('diag-run-equipment') });
+    if (stale()) return;
     renderJson($('diag-out'), res.status === 200 ? res.body : res.body);
   }));
 
-  $('btn-diag-fetch').addEventListener('click', () => guard(async () => {
+  $('btn-diag-fetch').addEventListener('click', () => guard(async (stale) => {
     const res = await window.lab.api('/api/diagnostics/fetch', {
       equipmentId: num('diag-fetch-equipment'),
       target: $('diag-fetch-target').value.trim()
     });
+    if (stale()) return;
     renderJson($('diag-out'), res.status === 200 ? res.body : res.body);
   }));
 
-  $('btn-sweep').addEventListener('click', () => guard(async () => {
+  $('btn-sweep').addEventListener('click', () => guard(async (stale) => {
     const cfg = await window.lab.appConfig();
     const fs = cfg.fieldService;
     const res = await window.lab.api(fs.endpoint, {}, { [fs.header]: fs.token });
+    if (stale()) return;
     if (res.status !== 200) {
       $('sweep-out').innerHTML = '';
       setStatus('Fleet sweep failed: ' + res.status + ' ' + JSON.stringify(res.body), true);
@@ -205,9 +242,10 @@
       JSON.stringify(res.body, null, 2));
   }));
 
-  $('btn-v4-read').addEventListener('click', () => guard(async () => {
+  $('btn-v4-read').addEventListener('click', () => guard(async (stale) => {
     const requested = $('v4-path').value.trim();
     const text = await window.lab.readFile(requested);
+    if (stale()) return;
     renderJson($('v4-out'), text);
   }));
 

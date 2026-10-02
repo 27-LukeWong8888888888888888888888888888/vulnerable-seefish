@@ -107,6 +107,7 @@ router.post('/create', requireRole('admin'), async (req, res, next) => {
     } catch (err) {
       if (err.code === '23505') return res.status(409).json({ error: 'conflict', message: 'assetTag already exists' });
       if (err.code === '23503') return res.status(400).json({ error: 'invalid_reference', message: 'unknown locationId' });
+      if (err.code === '23514') return res.status(400).json({ error: 'validation_failed', message: 'invalid status value' });
       throw err;
     }
   } catch (err) {

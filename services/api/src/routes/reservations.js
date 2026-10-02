@@ -91,6 +91,30 @@ router.post('/create', async (req, res, next) => {
     if (ends.value <= starts.value) {
       return res.status(400).json({ error: 'validation_failed', message: 'endsAt must be after startsAt' });
     }
+    // Bookability and overlap pre-checks (unknown equipmentId is still
+    // reported by the INSERT's foreign-key catch below).
+    const eq = await query('SELECT status FROM equipment WHERE id = $1', [b.equipmentId]);
+    if (eq.rows.length > 0) {
+      if (eq.rows[0].status === 'maintenance' || eq.rows[0].status === 'retired') {
+        return res.status(409).json({
+          error: 'conflict',
+          message: `equipment is ${eq.rows[0].status} and cannot be reserved`
+        });
+      }
+      const clash = await query(
+        `SELECT id FROM reservations
+          WHERE equipment_id = $1 AND status = 'active'
+            AND starts_at < $2 AND ends_at > $3
+          LIMIT 1`,
+        [b.equipmentId, ends.value, starts.value]
+      );
+      if (clash.rows.length > 0) {
+        return res.status(409).json({
+          error: 'conflict',
+          message: 'equipment already has an active reservation overlapping that window'
+        });
+      }
+    }
     try {
       const { rows } = await query(
         `INSERT INTO reservations (equipment_id, user_id, starts_at, ends_at, purpose)
@@ -122,6 +146,13 @@ router.post('/update', async (req, res, next) => {
     if (!isOwner && req.user.role === 'student') {
       return res.status(403).json({ error: 'forbidden', message: 'students may only modify their own reservations' });
     }
+    // cancelled/completed are terminal — no further changes of any kind.
+    if (existing.status === 'cancelled' || existing.status === 'completed') {
+      return res.status(409).json({
+        error: 'conflict',
+        message: `reservation is ${existing.status} and can no longer be modified`
+      });
+    }
 
     const sets = [];
     const params = [];
@@ -129,17 +160,24 @@ router.post('/update', async (req, res, next) => {
       params.push(b.purpose);
       sets.push(`purpose = $${params.length}`);
     }
-    if (b.startsAt !== undefined) {
-      const starts = parseDate(b.startsAt, 'startsAt');
-      if (starts.error) return res.status(400).json({ error: 'validation_failed', message: starts.error });
-      params.push(starts.value);
+    const newStarts = b.startsAt !== undefined ? parseDate(b.startsAt, 'startsAt') : null;
+    if (newStarts && newStarts.error) return res.status(400).json({ error: 'validation_failed', message: newStarts.error });
+    const newEnds = b.endsAt !== undefined ? parseDate(b.endsAt, 'endsAt') : null;
+    if (newEnds && newEnds.error) return res.status(400).json({ error: 'validation_failed', message: newEnds.error });
+    if (newStarts) {
+      params.push(newStarts.value);
       sets.push(`starts_at = $${params.length}`);
     }
-    if (b.endsAt !== undefined) {
-      const ends = parseDate(b.endsAt, 'endsAt');
-      if (ends.error) return res.status(400).json({ error: 'validation_failed', message: ends.error });
-      params.push(ends.value);
+    if (newEnds) {
+      params.push(newEnds.value);
       sets.push(`ends_at = $${params.length}`);
+    }
+    // The effective window (new value or stored value) must stay temporally
+    // possible — updating only one side is checked against the other side.
+    const effStarts = newStarts ? newStarts.value : new Date(existing.startsAt).toISOString();
+    const effEnds = newEnds ? newEnds.value : new Date(existing.endsAt).toISOString();
+    if (Date.parse(effEnds) <= Date.parse(effStarts)) {
+      return res.status(400).json({ error: 'validation_failed', message: 'endsAt must be after startsAt' });
     }
     if (b.status !== undefined) {
       // Students may only ever cancel; staff (and non-student owners) set any.
@@ -151,6 +189,23 @@ router.post('/update', async (req, res, next) => {
     }
     if (sets.length === 0) {
       return res.status(400).json({ error: 'validation_failed', message: 'nothing to update (purpose, status, startsAt, endsAt)' });
+    }
+    // Overlap pre-check, but only when the window moves (the row itself is
+    // excluded so a legitimate reschedule is never blocked by its old window).
+    if (newStarts || newEnds) {
+      const clash = await query(
+        `SELECT id FROM reservations
+          WHERE equipment_id = $1 AND status = 'active' AND id <> $2
+            AND starts_at < $3 AND ends_at > $4
+          LIMIT 1`,
+        [existing.equipmentId, b.id, effEnds, effStarts]
+      );
+      if (clash.rows.length > 0) {
+        return res.status(409).json({
+          error: 'conflict',
+          message: 'equipment already has an active reservation overlapping that window'
+        });
+      }
     }
     params.push(b.id);
     try {
