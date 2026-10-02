@@ -5,6 +5,10 @@ Electron thick client + Express REST API + PostgreSQL for booking lab
 equipment, reporting faults, and running device diagnostics, plus a
 simulated instrument on an internal lab network.
 
+> **AI use disclosure:** This project was developed with the assistance of an
+> AI coding agent. All code, documentation, and tests were produced with AI
+> assistance under human direction and review.
+
 > **This is a deliberately vulnerable lab.** See `SECURITY-LAB-NOTICE.md`.
 > All data is synthetic. Do not deploy.
 
