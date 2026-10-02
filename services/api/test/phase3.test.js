@@ -14,19 +14,30 @@
  *         unauthenticated requests rejected
  *         invalid RC4 sessions rejected
  *
- * The suite mutates the seeded DB (creates + cancels one reservation per
- * run) but never touches the seeded V2 victim row (id 13) — safe to re-run.
+ * The suite creates two reservations per run in a window 60 days out and
+ * deletes them again in test.before/test.after (see cleanup()), so the
+ * shared dev DB stays at its seed baseline. It never touches the seeded
+ * V2 victim row (id 13).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createApp } = require('../src/app.js');
+const { query } = require('../src/db');
 const LabEnvelope = require('../../../shared/protocol/envelope.js');
 
 let server;
 let base;
 
+// Janitor: suite rows are created at exactly +60 days, while the seed data
+// never ends later than 2026-11-05 — so anything ending more than 45 days
+// out is a row this suite (or a crashed earlier run of it) created.
+async function cleanup() {
+  await query("DELETE FROM reservations WHERE ends_at > now() + interval '45 days'");
+}
+
 test.before(async () => {
+  await cleanup();
   const app = createApp();
   await new Promise((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
@@ -34,7 +45,10 @@ test.before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-test.after(() => new Promise((resolve) => server.close(resolve)));
+test.after(async () => {
+  await cleanup();
+  await new Promise((resolve) => server.close(resolve));
+});
 
 async function getKey() {
   const res = await fetch(base + '/api/session/key', { method: 'POST' });

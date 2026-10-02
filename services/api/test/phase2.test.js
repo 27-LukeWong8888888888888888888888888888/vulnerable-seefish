@@ -25,13 +25,31 @@ const execFileAsync = promisify(execFile);
 
 const { createApp } = require('../src/app.js');
 const { createSession, revokeSession } = require('../src/sessions.js');
+const { query } = require('../src/db');
 const LabRC4 = require('../../../shared/protocol/rc4.js');
 const LabEnvelope = require('../../../shared/protocol/envelope.js');
 
 let server;
 let base;
+let createdEquipmentId;
+
+// Janitor: removes this suite's fault rows (their title marker survives —
+// titles are never edited) and restores the two seed rows test 10 mutates.
+// The equipment row test 10 creates is deleted by its captured id in
+// test.after — a blanket asset-tag delete is unsafe because real UI
+// bookings can reference leftover rows from earlier runs.
+async function cleanup() {
+  await query('DELETE FROM fault_reports WHERE title = $1', ['Phase 2 verification report']);
+  await query("UPDATE equipment SET status = 'available' WHERE id = 1");
+  await query("UPDATE fault_reports SET status = 'open' WHERE id = 1");
+  if (createdEquipmentId) {
+    await query('DELETE FROM equipment WHERE id = $1', [createdEquipmentId]);
+    createdEquipmentId = null;
+  }
+}
 
 test.before(async () => {
+  await cleanup();
   const app = createApp();
   await new Promise((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
@@ -39,7 +57,10 @@ test.before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-test.after(() => new Promise((resolve) => server.close(resolve)));
+test.after(async () => {
+  await cleanup();
+  await new Promise((resolve) => server.close(resolve));
+});
 
 async function getKey() {
   const res = await fetch(base + '/api/session/key', { method: 'POST' });
@@ -196,8 +217,9 @@ test('10. role restrictions work', async () => {
   const tech = await login(s, 'tech1', 'TechPass!23');
   const admin = await login(s, 'admin', 'AdminPass!23');
 
-  // Unique tag per run: the suite mutates the shared seeded DB, so a fixed
-  // tag would 409 (conflict) on re-runs and look like a role-check failure.
+  // Unique tag per run: a crashed earlier run may have left its row behind,
+  // so a fixed tag would 409 (conflict); this run's row is deleted by id in
+  // test.after.
   const tag = 'EQ-TEST-' + Date.now().toString(36);
 
   // students cannot create or update equipment
@@ -222,6 +244,7 @@ test('10. role restrictions work', async () => {
     locationId: 1
   });
   assert.equal(r.status, 201);
+  createdEquipmentId = r.decrypted.id;
 
   // technicians cannot create but can update
   r = await encRequest(s, '/api/equipment/create', {

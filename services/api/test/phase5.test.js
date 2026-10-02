@@ -20,6 +20,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createApp } = require('../src/app.js');
+const { query } = require('../src/db');
 const LabEnvelope = require('../../../shared/protocol/envelope.js');
 
 const FS_TOKEN = 'FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48';
@@ -29,8 +30,10 @@ const DEVICE_ADMIN_URL = 'http://lab-device:8080/api/admin';
 
 let server;
 let base;
+let suiteStart;
 
 test.before(async () => {
+  suiteStart = new Date();
   const app = createApp();
   await new Promise((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
@@ -38,7 +41,14 @@ test.before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-test.after(() => new Promise((resolve) => server.close(resolve)));
+test.after(async () => {
+  // The endpoints record a diagnostic_runs row per call and return no run
+  // id, so this suite's rows (created during this run only — nothing else
+  // writes the table concurrently) are cleaned up by creation time. Test 4
+  // reads them before this hook deletes them.
+  await query('DELETE FROM diagnostic_runs WHERE created_at >= $1', [suiteStart]);
+  await new Promise((resolve) => server.close(resolve));
+});
 
 async function getKey() {
   const res = await fetch(base + '/api/session/key', { method: 'POST' });

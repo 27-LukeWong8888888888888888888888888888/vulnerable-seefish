@@ -115,8 +115,8 @@ run_grep "seed: 9 users (admin, 2 technicians, 6 students)" "^9$" bash -c "$PSQL
 run_grep "seed: 4 locations" "^4$" bash -c "$PSQL \"select count(*) from locations;\""
 run_grep "seed: equipment fleet present (>= 22 rows incl. EQ-1001/EQ-1002)" "^2$" bash -c \
   "$PSQL \"select count(*) from equipment where asset_tag in ('EQ-1001','EQ-1002');\""
-run_grep "seed: reservations present (>= 32 rows)" "^[3-9][0-9]$" bash -c \
-  "$PSQL \"select count(*) from reservations;\""
+run_grep "seed: reservations present (>= 32 rows)" "^t$" bash -c \
+  "$PSQL \"select count(*) >= 32 from reservations;\""
 run_grep "seed: V2 victim row 13 exists (alice, active)" "^13\|alice\|active$" bash -c \
   "$PSQL \"select r.id, u.username, r.status from reservations r join users u on u.id = r.user_id where r.id = 13;\""
 
