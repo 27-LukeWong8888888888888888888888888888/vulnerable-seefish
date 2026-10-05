@@ -1,4 +1,4 @@
--- Campus Laboratory Booking — seed data (Phase 1)
+-- Campus Laboratory Booking — seed data
 -- All values are synthetic. Times are UTC.
 
 -- Seed IDs are deterministic:
@@ -22,9 +22,8 @@ INSERT INTO locations (id, building, room, label) VALUES
   (3, 'Bldg D', '105', 'Bldg D — 105 (Electronics Lab)'),
   (4, 'Bldg E', '310', 'Bldg E — 310 (Fabrication Lab)');
 
--- EQ-1001 is the simulated internal lab device that arrives in Phase 4; the
--- rest are synthetic campus addresses that later demonstrate the missing
--- SSRF allowlist (Phase 5).
+-- EQ-1001 is the simulated internal lab device; the rest are synthetic
+-- campus addresses that later demonstrate the missing diagnostics allowlist.
 INSERT INTO equipment (id, asset_tag, name, category, location_id, status, firmware_version, diagnostic_target) VALUES
   (1,  'EQ-1001', 'Environmental Chamber XL',  'environmental',   1, 'available',  '3.1.7-lab', 'http://lab-device:8080/api/status'),
   (2,  'EQ-1002', 'DNA Sequencer 4500',       'sequencing',      2, 'available',  '2.9.1',     'http://10.20.30.41:8080/api/status'),
@@ -41,7 +40,7 @@ INSERT INTO equipment (id, asset_tag, name, category, location_id, status, firmw
 
 -- 32 reservations, deliberately cross-user. Row 13 (alice, EQ-1002,
 -- "Senior project: DNA sequencer calibration") is the seeded proof row that
--- lab vulnerability V2 must let another user retrieve (Phase 3).
+-- the reservation search must let another user retrieve.
 INSERT INTO reservations (equipment_id, user_id, starts_at, ends_at, purpose, status) VALUES
   (1,  4, '2026-09-02 09:00+00', '2026-09-02 11:00+00', 'ENV-301: chamber baseline run', 'completed'),
   (1,  5, '2026-09-03 13:00+00', '2026-09-03 15:00+00', 'ENV-301: chamber baseline run', 'completed'),
@@ -85,12 +84,12 @@ INSERT INTO fault_reports (equipment_id, reported_by, title, description, severi
   (7,  4, 'Stage motor stalls',         'X-stage stalls near home position.',                 'low', 'resolved', 'Replaced stepper driver (DRV8825)');
 
 -- Synthetic dummy secrets. The field-service token value is the canonical
--- string that will also be packaged inside the Electron app for V1; it is
--- not a real credential.
+-- string that is also packaged inside the Electron app; it is not a real
+-- credential.
 INSERT INTO service_secrets (name, token, note) VALUES
   ('field-service-token',
    'FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48',
-   'Synthetic field-service token for the vendor (non-production) fleet-sweep function. V1 lab: mirror of the token packaged inside the Electron ASAR at resources/lab-app-config.json. Not a real credential.'),
+   'Synthetic field-service token for the vendor (non-production) fleet-sweep function. Mirror of the token packaged inside the Electron ASAR at resources/lab-app-config.json. Not a real credential.'),
   ('legacy-api-key',
    'LEGACY-LAB-00000000-1111-2222-3333-444444444444',
    'Synthetic legacy integration key kept for realism. Unused by the application.');

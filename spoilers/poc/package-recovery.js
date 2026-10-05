@@ -2,7 +2,7 @@
 'use strict';
 
 /*
- * poc-v1-asar.js — Phase 7 V1 package-recovery proof.
+ * spoilers/poc/package-recovery.js — Phase 7 V1 package-recovery proof.
  *
  * Two clearly separated stages:
  *
@@ -26,12 +26,12 @@
  * The token is SYNTHETIC coursework data — NOT a real credential.
  * Local lab targets only; no external service is contacted.
  *
- * Usage:  node scripts/poc-v1-asar.js [--base http://127.0.0.1:3000]
+ * Usage:  node spoilers/poc/package-recovery.js [--base http://127.0.0.1:3000]
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
-const REPO = path.join(__dirname, '..');
+const REPO = path.join(__dirname, '..', '..');
 const ASAR_PATH = process.env.LAB_ASAR || path.join(REPO, 'client', 'app.asar');
 const CONFIG_ENTRY = 'client/resources/lab-app-config.json';
 const BASE = (process.argv.includes('--base')
@@ -159,7 +159,7 @@ async function useToken(token) {
 }
 
 async function main() {
-  console.log('poc-v1-asar — V1 package-recovery proof (SYNTHETIC lab token, local targets only)');
+  console.log('spoilers/poc/package-recovery.js — V1 package-recovery proof (SYNTHETIC lab token, local targets only)');
   const token = recoverToken();
   await useToken(token);
   console.log('\nPOC OK — V1 confirmed end to end:');
@@ -168,6 +168,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[poc-v1-asar] ' + (err && err.message));
+  console.error('[package-recovery] ' + (err && err.message));
   process.exit(1);
 });

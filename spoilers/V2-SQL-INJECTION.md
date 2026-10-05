@@ -13,7 +13,7 @@
 | Vulnerable parameter | `q` (body field, inside the RC4 envelope) |
 | Attacker model | any authenticated user (the seeded `student` role is enough) |
 | Impact | read **every user's reservations**, bypassing per-user scoping |
-| Exact location | `services/api/src/routes/reservations.js` — route `/search`, comment `// VULN-V2: INTENTIONAL SQL INJECTION` |
+| Exact location | `services/api/src/routes/reservations.js` — route `/search`, comment `// legacy string-concatenated filter (see note above the route)` |
 
 ## Why the query is intentionally vulnerable
 
@@ -24,7 +24,7 @@ passed as a bind parameter:
 ```js
 // services/api/src/routes/reservations.js (route POST /search)
 const { rows } = await query(
-  // VULN-V2: INTENTIONAL SQL INJECTION — `q` concatenated unescaped.
+  // legacy string-concatenated filter (see note above the route).
   `${SELECT_LIST}
     WHERE r.user_id = $1 AND r.purpose ILIKE '%${q}%'
     ORDER BY r.starts_at DESC`,
@@ -46,7 +46,7 @@ equipment endpoints already do — see the negative control).
 This is the **only** intentionally injectable query in the application.
 Equipment, authentication, fault reports, reservation list/create/update/
 history, and every other endpoint remain parameterized. That invariant is
-asserted by the Phase 3 test suite (`services/api/test/phase3.test.js`).
+asserted by the reservations test suite (`services/api/test/reservations.test.js`).
 
 ## Protocol requirement
 
@@ -76,7 +76,7 @@ for him (asserted by tests 6 and 5 respectively).
 ### Automated PoC (preferred)
 
 ```bash
-docker compose exec api node scripts/poc-v2-sqli.js
+docker compose exec -T api node spoilers/poc/reservation-search.js
 ```
 
 Performs the full cycle programmatically: session key → login as bob →
@@ -128,8 +128,8 @@ call contains the victim row:
 
 ## Exact proof of the authorization bypass
 
-All of the following are asserted by `services/api/test/phase3.test.js`
-(tests 5–7) and by `scripts/poc-v2-sqli.js`:
+All of the following are asserted by `services/api/test/reservations.test.js`
+(tests 5–7) and by `spoilers/poc/reservation-search.js`:
 
 1. **Control (test 5):** `alice` searching `q = "DNA"` sees only her own
    rows — every returned row has `ownerUsername: "alice"`.
@@ -145,12 +145,12 @@ All of the following are asserted by `services/api/test/phase3.test.js`
 
 | # | Check | Where |
 |---|---|---|
-| 1 | Normal search returns only own results | phase3 test 5 |
-| 2 | Ordinary search cannot retrieve another user's reservation | phase3 test 6 |
-| 3 | Intended payload retrieves the seeded cross-user reservation | phase3 test 7 |
-| 4 | Unrelated endpoint (equipment filter `q`) stays parameterized: same payload shape returns 200 with 0 rows | phase3 test 8 (+ phase2 test 11) |
-| 5 | Unauthenticated requests rejected: no token → 401 `auth_required`; plaintext JSON → 400 `missing_sid` | phase3 test 9 |
-| 6 | Invalid RC4 sessions rejected: unknown sid → 401, bad ciphertext → 400 | phase3 test 9 |
+| 1 | Normal search returns only own results | reservations test 5 |
+| 2 | Ordinary search cannot retrieve another user's reservation | reservations test 6 |
+| 3 | Intended payload retrieves the seeded cross-user reservation | reservations test 7 |
+| 4 | Unrelated endpoint (equipment filter `q`) stays parameterized: same payload shape returns 200 with 0 rows | reservations test 8 (+ core test 11) |
+| 5 | Unauthenticated requests rejected: no token → 401 `auth_required`; plaintext JSON → 400 `missing_sid` | reservations test 9 |
+| 6 | Invalid RC4 sessions rejected: unknown sid → 401, bad ciphertext → 400 | reservations test 9 |
 
 ## Remediation guidance
 

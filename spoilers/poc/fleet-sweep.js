@@ -2,7 +2,7 @@
 'use strict';
 
 /*
- * poc-v1-token.js — proof-of-concept for lab vulnerability V1 (intentional
+ * Proof-of-concept for lab vulnerability V1 (intentional
  * hard-coded synthetic field-service token).
  *
  * The token FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48 is compiled into
@@ -16,9 +16,9 @@
  * Synthetic token for coursework — NOT a real credential.
  *
  * Usage:
- *   node scripts/poc-v1-token.js [--base http://127.0.0.1:3000]
+ *   node spoilers/poc/fleet-sweep.js [--base http://127.0.0.1:3000]
  */
-const LabEnvelope = require('../shared/protocol/envelope.js');
+const LabEnvelope = require('../../shared/protocol/envelope.js');
 
 const BASE = (process.argv.includes('--base')
   ? process.argv[process.argv.indexOf('--base') + 1]
@@ -99,6 +99,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[poc-v1-token] ' + err.message);
+  console.error('[fleet-sweep] ' + err.message);
   process.exit(1);
 });

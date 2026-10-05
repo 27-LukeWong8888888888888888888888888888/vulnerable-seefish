@@ -1,18 +1,19 @@
 'use strict';
 
 /*
- * Simulated internal laboratory device (Phase 4) — synthetic JSON service.
+ * Simulated internal laboratory device — synthetic JSON service.
  *
  * Plain node:http, no framework, no dependencies. This container models an
  * instrument that lives on the campus-internal lab network only. It is the
- * future SSRF target (Phase 5): reachable FROM the api container by Docker
- * service-name DNS (http://lab-device:8080), unreachable from the host.
+ * designated internal target for the diagnostics-fetch exercises: reachable
+ * FROM the api container by Docker service-name DNS (http://lab-device:8080),
+ * unreachable from the host.
  *
  * Endpoints (exactly these three, GET only, JSON only):
  *   GET /api/status       deviceId, type, state, location, uptimeSec
  *   GET /api/diagnostics  temperatureC, firmwareVersion, errorCount, lastMaintenance
- *   GET /api/admin        SYNTHETIC challenge value for the Phase 5 SSRF
- *                         exercise — NOT a real credential.
+ *   GET /api/admin        SYNTHETIC device-admin challenge value for the
+ *                         security lab — NOT a real credential.
  *
  * All values are synthetic.
  */
@@ -58,11 +59,13 @@ function diagnosticsPayload() {
 
 function adminPayload() {
   return {
-    notice: 'SYNTHETIC challenge value for the security-lab SSRF exercise (Phase 5). NOT a real credential.',
-    challenge: 'LAB{ssrf_internal_device_reached}',
+    notice: 'SYNTHETIC device-admin challenge value for the security lab. NOT a real credential.',
+    challenge: CHALLENGE,
     access: 'internal-network-only'
   };
 }
+
+const CHALLENGE = 'LAB{device_admin_console_reached}';
 
 const ROUTES = {
   '/api/status': statusPayload,

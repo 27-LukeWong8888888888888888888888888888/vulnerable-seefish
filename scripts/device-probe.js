@@ -3,11 +3,11 @@
 
 /*
  * device-probe.js — connectivity check FROM the api container TO the
- * simulated lab device over the lab-internal network (Phase 4).
+ * simulated lab device over the lab-internal network.
  *
- * Demonstrates — independently of any SSRF endpoint (which is Phase 5) —
- * that the api container can reach http://lab-device:8080 by Docker
- * service-name DNS and that the device returns the expected synthetic JSON.
+ * Demonstrates — independently of any diagnostics endpoint — that the api
+ * container can reach http://lab-device:8080 by Docker service-name DNS
+ * and that the device returns the expected synthetic JSON.
  *
  * Run:  docker compose exec api node scripts/device-probe.js
  */
@@ -15,7 +15,7 @@ const BASE = (process.argv.includes('--base')
   ? process.argv[process.argv.indexOf('--base') + 1]
   : process.env.LAB_DEVICE_BASE) || 'http://lab-device:8080';
 
-const CHALLENGE = 'LAB{ssrf_internal_device_reached}';
+const CHALLENGE = 'LAB{device_admin_console_reached}';
 
 const EXPECTED = {
   '/api/status': ['deviceId', 'type', 'state', 'location', 'uptimeSec'],

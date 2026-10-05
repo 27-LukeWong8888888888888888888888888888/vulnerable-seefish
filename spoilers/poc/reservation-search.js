@@ -2,7 +2,7 @@
 'use strict';
 
 /*
- * poc-v2-sqli.js — proof-of-concept for lab vulnerability V2 (intentional
+ * Proof-of-concept for lab vulnerability V2 (intentional
  * SQL injection in POST /api/reservations/search).
  *
  * Runs the full encrypted-protocol cycle as an ORDINARY user (bob) and
@@ -20,10 +20,10 @@
  *   7. assert alice's reservation is present in the decrypted rows
  *
  * Usage:
- *   node scripts/poc-v2-sqli.js [--base http://127.0.0.1:3000]
+ *   node spoilers/poc/reservation-search.js [--base http://127.0.0.1:3000]
  */
-const LabRC4 = require('../shared/protocol/rc4.js');
-const LabEnvelope = require('../shared/protocol/envelope.js');
+const LabRC4 = require('../../shared/protocol/rc4.js');
+const LabEnvelope = require('../../shared/protocol/envelope.js');
 
 const BASE = (process.argv.includes('--base')
   ? process.argv[process.argv.indexOf('--base') + 1]
@@ -118,6 +118,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[poc-v2-sqli] ' + err.message);
+  console.error('[reservation-search] ' + err.message);
   process.exit(1);
 });

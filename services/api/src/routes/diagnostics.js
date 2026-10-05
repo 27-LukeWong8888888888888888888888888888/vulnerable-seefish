@@ -1,8 +1,8 @@
 'use strict';
 
 /*
- * Equipment diagnostics (Phase 5) — both endpoints fetch a URL SERVER-SIDE
- * and record a diagnostic_runs row.
+ * Equipment diagnostics — both endpoints fetch a URL SERVER-SIDE and
+ * record a diagnostic_runs row.
  *
  *   POST /api/diagnostics/run    (technician, admin)
  *       { equipmentId } — intended behaviour: the server fetches the
@@ -10,12 +10,12 @@
  *       caller does not choose the URL.
  *
  *   POST /api/diagnostics/fetch  (technician, admin)
- *       { equipmentId, target } — VULN-V3: INTENTIONAL SSRF. `target` comes
- *       from the request body and is fetched by the server with NO
- *       allowlist and NO loopback / private-range / link-local blocking
- *       (redirects are followed). A technician can therefore make the
- *       server reach anything the api container can reach — including the
- *       internal-only lab device. Synthetic coursework vuln — do not fix.
+ *       { equipmentId, target } — `target` comes from the request body and
+ *       is fetched by the server with NO allowlist and NO loopback /
+ *       private-range / link-local blocking (redirects are followed). A
+ *       technician can therefore make the server reach anything the api
+ *       container can reach — including the internal-only lab device.
+ *       Intentional lab behavior — do not "fix".
  *
  * The fetched body is returned to the caller in full (capped), which is
  * what makes the internal device challenge retrievable through the API.
@@ -41,9 +41,9 @@ async function lookupEquipment(equipmentId) {
 
 async function fetchTarget(target) {
   const started = Date.now();
-  // VULN-V3 (fetch endpoint): `target` is caller-controlled and there is
-  // deliberately no URL validation here — no scheme/host allowlist, no
-  // loopback or private-range blocking. Redirects are followed.
+  // `target` is caller-controlled and there is deliberately no URL
+  // validation here — no scheme/host allowlist, no loopback or
+  // private-range blocking. Redirects are followed.
   const resp = await fetch(target, { redirect: 'follow', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   const text = (await resp.text()).slice(0, MAX_BODY_CHARS);
   return { resp, text, durationMs: Date.now() - started };

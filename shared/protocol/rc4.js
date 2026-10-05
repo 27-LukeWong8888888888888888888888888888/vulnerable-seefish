@@ -8,7 +8,7 @@
  * SECURITY NOTE (documented lab weakness): a fresh keystream is started from
  * the session key for EVERY message, with no nonce and no IV. The same
  * keystream is therefore reused across all messages under one session key.
- * See docs/PROTOCOL-RC4.md (Phase 8) and shared/protocol/protocol.test.js.
+ * See docs/PROTOCOL-RC4.md and shared/protocol/protocol.test.js.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {

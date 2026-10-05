@@ -27,7 +27,7 @@ client packaged at least once (`cd client && npm run pack`), or run
 the proof script and it will tell you to pack first.
 
 **Starting point.** `client/app.asar` and
-`scripts/poc-v1-asar.js`. Read the pack script
+`spoilers/poc/package-recovery.js`. Read the pack script
 (`client/scripts/pack-asar.js`) to see what goes into the archive.
 
 **Steps.**
@@ -36,7 +36,7 @@ the proof script and it will tell you to pack first.
 2. Inspect/extract it (the PoC uses `@electron/asar`;
    `npx asar list` / `npx asar extract-file` work manually).
 3. Find the application config resource and recover the token.
-4. Run `node scripts/poc-v1-asar.js` and watch both stages.
+4. Run `node spoilers/poc/package-recovery.js` and watch both stages.
 
 **Expected observation.** Stage A recovers
 `FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48` from
@@ -69,7 +69,7 @@ user's reservation — a horizontal authorization bypass.
 inside the RC4 envelope — get a session key first via
 `POST /api/session/key`, then login via `POST /api/auth/login`).
 Helper: `scripts/lab-client.js` inside the api container; reference
-PoC `scripts/poc-v2-sqli.js`.
+PoC `spoilers/poc/reservation-search.js`.
 
 **Steps.**
 
@@ -105,7 +105,7 @@ reach a device that is not routable from your own machine.
 
 **Starting point.** `POST /api/diagnostics/fetch` (body fields
 `equipmentId`, `target`, inside the RC4 envelope). Reference PoC
-`scripts/poc-v3-ssrf.js`. First confirm from the **host** that
+`spoilers/poc/device-fetch.js`. First confirm from the **host** that
 `curl http://lab-device:8080/api/status` fails — no route.
 
 **Steps.**
@@ -120,13 +120,13 @@ reach a device that is not routable from your own machine.
 **Expected observation.** The API container — which sits on the
 internal-only `lab-internal` Docker network — fetches the URL for
 you and returns the body: `{"challenge":
-"LAB{ssrf_internal_device_reached}", "access":
+"LAB{device_admin_console_reached}", "access":
 "internal-network-only", ...}`. Your host still has no route to the
 device; only the server's network position made it possible.
 
 **Proof to capture.** The failing host-side curl (isolation), and the
 decrypted `/fetch` response containing
-`LAB{ssrf_internal_device_reached}`.
+`LAB{device_admin_console_reached}`.
 
 **Remediation question.** List the layers you would put between a
 diagnostics service and arbitrary URLs (allowlists, range blocks,
@@ -144,7 +144,7 @@ intended directory, from the renderer context.
 (`cd client && npm install` once). Lab running for the login
 round-trip check.
 
-**Starting point.** The **File viewer — V4 demo** section of the
+**Starting point.** The **File viewer** section of the
 client UI, or the deterministic test `cd client && node --test` and
 the smoke run `bash client/scripts/smoke-electron.sh`.
 
@@ -153,13 +153,13 @@ the smoke run `bash client/scripts/smoke-electron.sh`.
 1. Read the chain: `client/preload.js` (`readFile` →
    `ipcRenderer.invoke('lab:read-file', requested)`),
    `client/main.js` (`ipcMain.handle`), and the sink
-   `client/v4-file-read.js` (`path.join(MANUALS_DIR, requested)`).
+   `client/manual-reader.js` (`path.join(MANUALS_DIR, requested)`).
 2. Control: read `equipment-manual.txt` — the intended manual.
-3. Traversal: read `../proof/v4-proof.txt`.
+3. Traversal: read `../internal/ops-memo.txt`.
 
 **Expected observation.** The traversal string is accepted verbatim,
 `path.join` resolves it outside `resources/manuals/`, and the proof
-file content — including `LAB{unsafe_ipc_path_traversal}` — is
+file content — including `LAB{internal_notes_recovered}` — is
 returned to the renderer.
 
 **Proof to capture.** The traversal input, the returned file content
@@ -184,5 +184,6 @@ All four proofs together demonstrate: credentials ship with clients
 (V1), string-built SQL breaks authorization (V2), server-side fetch
 breaks network isolation (V3), and unvalidated IPC breaks the
 process/filesystem boundary (V4). Cross-reference
-[`VULNERABILITIES.md`](../VULNERABILITIES.md) (repo root) and
-`docs/vulnerabilities/` for the authoritative per-vulnerability details.
+[`VULNERABILITIES.md`](VULNERABILITIES.md) (this directory) and the
+per-vulnerability writeups in `spoilers/` for the authoritative
+per-vulnerability details.

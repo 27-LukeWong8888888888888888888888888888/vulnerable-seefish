@@ -1,10 +1,10 @@
 'use strict';
 
 /*
- * Phase 2 verification — run inside the api container:
+ * Core verification — run inside the api container:
  *   docker compose exec api node --test test/
  *
- * Covers the approved Phase 2 checklist:
+ * Covers the approved core checklist:
  *   1  /health plaintext                       8  valid login via envelope
  *   2  /api/session/key plaintext              9  invalid credentials rejected
  *   3  valid encrypted request succeeds       10  role restrictions
@@ -33,13 +33,13 @@ let server;
 let base;
 let createdEquipmentId;
 
-// Janitor: removes this suite's fault rows (their title marker survives —
-// titles are never edited) and restores the two seed rows test 10 mutates.
+// Janitor: removes this suite's fault rows (their title marker is stable
+// across runs) and restores the two seed rows test 10 mutates.
 // The equipment row test 10 creates is deleted by its captured id in
-// test.after — a blanket asset-tag delete is unsafe because real UI
+// test.after — a blanket asset-tag delete is risky because real UI
 // bookings can reference leftover rows from earlier runs.
 async function cleanup() {
-  await query('DELETE FROM fault_reports WHERE title = $1', ['Phase 2 verification report']);
+  await query('DELETE FROM fault_reports WHERE title = $1', ['Core verification report']);
   await query("UPDATE equipment SET status = 'available' WHERE id = 1");
   await query("UPDATE fault_reports SET status = 'open' WHERE id = 1");
   if (createdEquipmentId) {
@@ -305,7 +305,7 @@ test('12. fault-report operations work with role visibility', async () => {
   const created = await encRequest(s, '/api/fault-reports/create', {
     token: alice,
     equipmentId: 2,
-    title: 'Phase 2 verification report',
+    title: 'Core verification report',
     description: 'synthetic test entry',
     severity: 'high'
   });
@@ -331,7 +331,7 @@ test('12. fault-report operations work with role visibility', async () => {
     token: tech,
     id: reportId,
     status: 'resolved',
-    resolution: 'verified in Phase 2 tests'
+    resolution: 'verified in core tests'
   });
   assert.equal(resolved.status, 200);
   assert.equal(resolved.decrypted.status, 'resolved');

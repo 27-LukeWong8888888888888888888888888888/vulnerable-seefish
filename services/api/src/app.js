@@ -47,7 +47,7 @@ function createApp() {
   app.use('/api/fault-reports', requireAuth, faultRoutes);
   app.use('/api/reservations', requireAuth, reservationRoutes);
   // Diagnostics needs a logged-in technician/admin; field-service is gated
-  // solely by the hard-coded FS token (V1), not by a user login token.
+  // solely by the hard-coded FS token, not by a user login token.
   app.use('/api/diagnostics', requireAuth, diagnosticsRoutes);
   app.use('/api/field-service', fieldServiceRoutes);
 

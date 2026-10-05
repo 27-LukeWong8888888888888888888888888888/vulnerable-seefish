@@ -8,8 +8,8 @@
  * page still has no require() and no Node APIs of its own. Only the exposed
  * keys below cross the boundary.
  *
- * V4: readFile(name) forwards `name` verbatim to the main-process handler,
- * which performs no path validation (see v4-file-read.js).
+ * readFile(name) forwards `name` verbatim to the main-process handler,
+ * which performs no path validation (see manual-reader.js).
  */
 const { contextBridge, ipcRenderer } = require('electron');
 

@@ -1,6 +1,6 @@
 name: campus-lab-booking
 
-# PostgreSQL + Express API (Phase 2) + simulated lab device (Phase 4).
+# PostgreSQL + Express API + simulated lab device.
 # The api bridges host -> internal via lab-edge (internal networks block
 # host ingress to published ports); db and lab-device stay internal-only.
 
@@ -54,8 +54,8 @@ services:
     restart: unless-stopped
 
   # Simulated internal laboratory device. NO published ports and NO lab-edge
-  # membership: it can only be reached by containers on lab-internal (the api,
-  # in Phase 5 via SSRF). It is deliberately unreachable from the host.
+  # membership: it can only be reached by containers on lab-internal (the api).
+  # It is deliberately unreachable from the host.
   lab-device:
     build:
       context: .

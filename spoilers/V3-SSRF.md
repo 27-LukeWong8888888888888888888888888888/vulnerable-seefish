@@ -13,8 +13,8 @@
 | Vulnerable parameter | `target` (body field, inside the RC4 envelope) |
 | Attacker model | any authenticated **technician** (seeded `tech1` / `TechPass!23` — documented in the README, so V3 is independent of V1) |
 | Impact | the api container becomes a request proxy: it can reach the internal-only lab device, and anything else its network position can reach |
-| Intended proof target | `http://lab-device:8080/api/admin` → challenge `LAB{ssrf_internal_device_reached}` |
-| Exact location | `services/api/src/routes/diagnostics.js` — route `/fetch`, comment `// VULN-V3 (fetch endpoint)` |
+| Intended proof target | `http://lab-device:8080/api/admin` → challenge `LAB{device_admin_console_reached}` |
+| Exact location | `services/api/src/routes/diagnostics.js` — route `/fetch`, comment ``// `target` is caller-controlled and there is deliberately no URL validation here — no scheme/host allowlist, no loopback or private-range blocking. Redirects are followed.`` |
 
 ## Why the endpoint is intentionally vulnerable
 
@@ -29,9 +29,9 @@ followed**:
 // services/api/src/routes/diagnostics.js (route POST /fetch)
 async function fetchTarget(target) {
   const started = Date.now();
-  // VULN-V3 (fetch endpoint): `target` is caller-controlled and there is
-  // deliberately no URL validation here — no scheme/host allowlist, no
-  // loopback or private-range blocking. Redirects are followed.
+  // `target` is caller-controlled and there is deliberately no URL
+  // validation here — no scheme/host allowlist, no loopback or
+  // private-range blocking. Redirects are followed.
   const resp = await fetch(target, { redirect: 'follow', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   const text = (await resp.text()).slice(0, MAX_BODY_CHARS);
   return { resp, text, durationMs: Date.now() - started };
@@ -76,7 +76,7 @@ envelope** — there is no plaintext shortcut:
 ### Automated PoC (preferred)
 
 ```bash
-docker compose exec api node scripts/poc-v3-ssrf.js
+docker compose exec -T api node spoilers/poc/device-fetch.js
 ```
 
 Handshake → technician login → control `/run` → `/fetch` of
@@ -106,31 +106,31 @@ docker compose exec api node scripts/lab-client.js \
   "assetTag": "EQ-1001",
   "target": "http://lab-device:8080/api/admin",
   "httpStatus": 200,
-  "body": "{\"notice\":\"SYNTHETIC challenge value for the security-lab SSRF exercise (Phase 5). NOT a real credential.\",\"challenge\":\"LAB{ssrf_internal_device_reached}\",\"access\":\"internal-network-only\"}",
+  "body": "{\"notice\":\"SYNTHETIC device-admin challenge value for the security lab. NOT a real credential.\",\"challenge\":\"LAB{device_admin_console_reached}\",\"access\":\"internal-network-only\"}",
   "durationMs": 12
 }
 ```
 
-The `challenge` value `LAB{ssrf_internal_device_reached}` — which the host
+The `challenge` value `LAB{device_admin_console_reached}` — which the host
 cannot fetch directly — is returned through the API. (Note: `lab-client.js`
 prints the whole envelope, decrypted, so the challenge is directly visible
 in its output.)
 
 ## Exact proof
 
-Asserted by `services/api/test/phase5.test.js` (test 3) and
-`scripts/poc-v3-ssrf.js`:
+Asserted by `services/api/test/field-ops.test.js` (test 3) and
+`spoilers/poc/device-fetch.js`:
 
 1. **Isolation (verify-device.sh 7a/7b):** from the host, both
    `curl http://127.0.0.1:8080/api/status` and
    `curl http://lab-device:8080/api/status` **fail** — the device is
    unreachable directly.
-2. **Exploit (phase5 test 3):** a technician sends
+2. **Exploit (field-ops test 3):** a technician sends
    `{equipmentId: 1, target: "http://lab-device:8080/api/admin"}` through
    the encrypted envelope; the API responds 200 and the decrypted body
-   **contains `LAB{ssrf_internal_device_reached}`** — data only available
+   **contains `LAB{device_admin_console_reached}`** — data only available
    on the internal network, retrieved by the server on the caller's behalf.
-3. **Control (phase5 tests 1–2):** the same technician using `/run` gets
+3. **Control (field-ops tests 1–2):** the same technician using `/run` gets
    only the configured target; students are denied 403; missing/invalid
    input is rejected 400/404; an unreachable target returns 502
    `fetch_failed` (it is not a generic proxy error path — the fetch really
@@ -140,11 +140,11 @@ Asserted by `services/api/test/phase5.test.js` (test 3) and
 
 | # | Check | Where |
 |---|---|---|
-| 1 | Student (non-technician) cannot use `/fetch` → 403 | phase5 test 2 |
-| 2 | Unknown `equipmentId` → 404; missing/invalid `target` → 400 | phase5 test 2 |
-| 3 | Unreachable target → 502 `fetch_failed`, failed run recorded | phase5 test 2 |
-| 4 | Plaintext request (no envelope) → 400 `missing_sid`; unknown sid → 401 | phase5 test 5 |
-| 5 | Unauthenticated (no login token) → 401 `auth_required` | phase5 test 5 |
+| 1 | Student (non-technician) cannot use `/fetch` → 403 | field-ops test 2 |
+| 2 | Unknown `equipmentId` → 404; missing/invalid `target` → 400 | field-ops test 2 |
+| 3 | Unreachable target → 502 `fetch_failed`, failed run recorded | field-ops test 2 |
+| 4 | Plaintext request (no envelope) → 400 `missing_sid`; unknown sid → 401 | field-ops test 5 |
+| 5 | Unauthenticated (no login token) → 401 `auth_required` | field-ops test 5 |
 | 6 | Device still host-inaccessible: no published port, host curls fail | scripts/verify-device.sh (7a/7b) |
 
 ## Remediation guidance

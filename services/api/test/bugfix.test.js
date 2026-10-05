@@ -1,10 +1,10 @@
 'use strict';
 
 /*
- * Bugfix regression suite (bug-hunt 2026-10-02, findings B3–B7) — run inside
- * the api container together with the phase suites:
- *   docker compose exec api node --test services/api/test/phase2.test.js \
- *     services/api/test/phase3.test.js services/api/test/phase5.test.js \
+ * Bugfix regression suite (pre-release bug sweep) — run inside
+ * the api container together with the other suites:
+ *   docker compose exec api node --test services/api/test/core.test.js \
+ *     services/api/test/reservations.test.js services/api/test/field-ops.test.js \
  *     services/api/test/bugfix.test.js
  *
  * Covers the post-fix behavior:
@@ -17,10 +17,10 @@
  *
  * Cleanup is marker-based: every reservation this suite creates carries a
  * purpose starting 'BUGFIX-' and the one equipment row an asset_tag starting
- * 'EQ-BUGFIX-'. The windows sit 40–43 days out so the phase3 janitor
- * (which deletes rows ending more than 45 days out) never races this suite,
- * and equipment ids 1, 3 and 5 (mutated or booked by the phase suites) are
- * never used.
+ * 'EQ-BUGFIX-'. The windows sit 40–43 days out so the reservations-suite
+ * janitor (which deletes rows ending more than 45 days out) never races this
+ * suite, and equipment ids 1, 3 and 5 (mutated or booked by the other
+ * suites) are never used.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

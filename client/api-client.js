@@ -11,7 +11,7 @@
  *   RC4 session (sid + key)   : transport encryption, from POST /api/session/key
  *   application token (labtok): identity/role, from POST /api/auth/login,
  *                               attached to every subsequent payload
- *   field-service token (FS-) : separate static synthetic config secret (V1),
+ *   field-service token (FS-) : separate static synthetic config secret,
  *                               sent as the X-Field-Token header, never used here
  */
 const LabEnvelope = require('../shared/protocol/envelope.js');

@@ -16,10 +16,10 @@
     const manual = await window.lab.readFile('equipment-manual.txt');
     log('[2] normal manuals read ok, first line: ' + manual.split('\n')[0]);
 
-    const proof = await window.lab.readFile('../proof/v4-proof.txt');
-    const flagOk = /LAB\{unsafe_ipc_path_traversal\}/.test(proof);
-    log('[3] traversal read ok (' + proof.length + ' chars), flag present: ' + flagOk);
-    if (!flagOk) throw new Error('proof flag missing');
+    const memo = await window.lab.readFile('../internal/ops-memo.txt');
+    const flagOk = /LAB\{internal_notes_recovered\}/.test(memo);
+    log('[3] file read ok (' + memo.length + ' chars), flag present: ' + flagOk);
+    if (!flagOk) throw new Error('expected marker missing');
 
     const login = await window.lab.login('alice', 'StudentPass!23');
     log('[4] login over IPC+RC4: ' + login.user.username + ' / role ' + login.user.role);

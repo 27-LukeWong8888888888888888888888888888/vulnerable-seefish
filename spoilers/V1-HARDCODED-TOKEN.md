@@ -11,11 +11,11 @@
 |---|---|
 | Vulnerability | Hard-coded credential (CWE-798) — a static API token compiled into the application |
 | Endpoint | `POST /api/field-service/fleet-sweep` |
-| Credential location | `services/api/src/fieldServiceToken.js` (constant `FIELD_SERVICE_TOKEN`); Phase 7 additionally packages the same value inside the Electron ASAR at `resources/lab-app-config.json` |
+| Credential location | `services/api/src/fieldServiceToken.js` (constant `FIELD_SERVICE_TOKEN`); the packaged client additionally ships the same value inside the Electron ASAR at `resources/lab-app-config.json` |
 | Token transport | `X-Field-Token` request header |
 | Attacker model | anyone who recovers the token — no user account, login token, or role required (the RC4 transport session still applies, like all `/api` routes) |
 | Impact | fleet-wide equipment diagnostics + **every user's** diagnostic run history, data no ordinary role can see |
-| Exact location | `services/api/src/routes/fieldService.js` — route `/fleet-sweep`, gated solely by the token from `src/fieldServiceToken.js` (comment `// VULN-V1: INTENTIONAL HARDCODED CREDENTIAL`) |
+| Exact location | `services/api/src/routes/fieldService.js` — route `/fleet-sweep`, gated solely by the token from `src/fieldServiceToken.js` (comment `// Static synthetic field-service token — NOT a real credential.`) |
 
 ## Why it is intentionally vulnerable
 
@@ -32,14 +32,15 @@ if (req.get('x-field-token') !== FIELD_SERVICE_TOKEN) {
 
 ```js
 // services/api/src/fieldServiceToken.js
-// VULN-V1: INTENTIONAL HARDCODED CREDENTIAL — synthetic coursework token,
-// NOT a real credential.
+// Static synthetic field-service token — NOT a real credential.
+// Behavior note: possession of this token alone authorizes the vendor field-service endpoint — no user account or role needed.
+// Do not change this behavior — the lab exercises depend on it.
 const FIELD_SERVICE_TOKEN = 'FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48';
 ```
 
 A static token cannot be rotated, scoped, or revoked, and — crucially for
-the lab — it ships to every client. In Phase 7 the same value is packaged
-inside the Electron ASAR (`resources/lab-app-config.json`); extracting the
+the lab — it ships to every client. The packaged client carries the same
+value inside the Electron ASAR (`resources/lab-app-config.json`); extracting the
 archive with `npx asar extract` (or any archive tool) reveals it. A real
 application would use per-deployment secrets with an expiry, or drop the
 vendor backdoor entirely.
@@ -60,7 +61,7 @@ exploitable.
 ### Automated PoC (preferred)
 
 ```bash
-docker compose exec api node scripts/poc-v1-token.js
+docker compose exec -T api node spoilers/poc/fleet-sweep.js
 ```
 
 Handshake (no login) → negative controls (no token → 403; a valid
@@ -74,7 +75,7 @@ lab-client.js cannot send custom headers, so use curl for the header
 (the envelope body still has to be built — easiest shown via the PoC).
 The PoC output is the reference reproduction.
 
-### Phase 7 — token recovery from the packaged client (ASAR)
+### Token recovery from the packaged client (ASAR)
 
 The token also ships inside the packaged Electron client. The pack step
 (`npm run pack` in `client/`, script `client/scripts/pack-asar.js`)
@@ -87,7 +88,7 @@ Deterministic two-stage proof (run on the lab host, against the local
 lab only):
 
 ```bash
-node scripts/poc-v1-asar.js
+node spoilers/poc/package-recovery.js
 ```
 
 The script clearly separates the two stages:
@@ -149,8 +150,8 @@ ordinary user role can enumerate through any other endpoint.
 
 ## Exact proof
 
-Asserted by `services/api/test/phase5.test.js` (test 4) and
-`scripts/poc-v1-token.js`:
+Asserted by `services/api/test/field-ops.test.js` (test 4) and
+`spoilers/poc/fleet-sweep.js`:
 
 1. **Negative:** envelope with no header → 403; envelope with a valid
    **student** login token but no header → 403 (user auth does not grant
@@ -166,11 +167,11 @@ Asserted by `services/api/test/phase5.test.js` (test 4) and
 
 | # | Check | Where |
 |---|---|---|
-| 1 | No token → 403 | phase5 test 4 |
-| 2 | Valid student session, no header → 403 | phase5 test 4 |
-| 3 | Wrong header value → 403 | phase5 test 4 |
-| 4 | Plaintext body (no envelope) → 400 `missing_sid`; unknown sid → 401 | phase5 test 5 |
-| 5 | V3 works without this token (independence) | phase5 test 3 |
+| 1 | No token → 403 | field-ops test 4 |
+| 2 | Valid student session, no header → 403 | field-ops test 4 |
+| 3 | Wrong header value → 403 | field-ops test 4 |
+| 4 | Plaintext body (no envelope) → 400 `missing_sid`; unknown sid → 401 | field-ops test 5 |
+| 5 | V3 works without this token (independence) | field-ops test 3 |
 
 ## Remediation guidance
 
@@ -201,5 +202,5 @@ docker compose up -d --wait
 `fleet-sweep` only reads data and appends an `audit_log` row; both are
 synthetic and safe to accumulate. The token itself is source code —
 "resetting" it would mean editing `services/api/src/fieldServiceToken.js`
-(and the Phase 7 ASAR config), which you must **not** do — the lab depends
+(and the packaged ASAR config), which you must **not** do — the lab depends
 on it.

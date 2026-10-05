@@ -4,7 +4,7 @@ An intentionally vulnerable security-lab application for coursework. See
 `SECURITY-LAB-NOTICE.md` in the repo root. All data is synthetic. Do not
 deploy.
 
-## Components (as of Phase 7)
+## Components
 
 | Component | Image | Networks | Host-facing? |
 |---|---|---|---|
@@ -37,13 +37,12 @@ deploy.
 1. **renderer → preload/IPC → main process → API.** The renderer page
    (vanilla JS, `nodeIntegration: false`) can only reach the preload
    bridge `window.lab`; IPC forwards to the main process, which alone
-   performs HTTP and RC4. V4 exists on this boundary.
+   performs HTTP and RC4.
 2. **API → lab-internal → lab-device.** The API is the single
-   controlled bridge onto the internal network. V3 exists here.
+   controlled bridge onto the internal network.
 3. **client package → holder.** Everything shipped to the client —
-   including `client/app.asar` — is readable by its user. V1 exists
-   here.
-4. **API → SQL engine.** One concatenated query (V2) escapes the
+   including `client/app.asar` — is readable by its user.
+4. **API → SQL engine.** One concatenated query escapes the
    application-layer per-user scoping.
 
 Host-exposure facts (asserted by `scripts/verify-device.sh` and
@@ -71,18 +70,14 @@ Host-exposure facts (asserted by `scripts/verify-device.sh` and
 4. Application authentication rides inside the envelope as an opaque
    in-memory token (`labtok-…`) issued by `POST /api/auth/login` —
    distinct from the RC4 transport session.
-5. Phase 6 desktop client: the renderer page (vanilla JS,
+5. Desktop client: the renderer page (vanilla JS,
    `nodeIntegration: false`) calls the narrow `window.lab` bridge exposed
    by the preload; IPC forwards to the main process, which performs the
    HTTP requests and the RC4 seal/open using the shared protocol module
    (`client/api-client.js`). The renderer never sees the RC4 key, never
    holds the `labtok-` token itself (the main process attaches it), and
    has no path to PostgreSQL or the lab device except through the api.
-   The V1 synthetic field-service token ships in
-   `client/resources/lab-app-config.json`; in Phase 7 these resources
-   are packaged into `client/app.asar` (`npm run pack` in `client/`)
-   and the package-recovery proof (`scripts/poc-v1-asar.js`) extracts
-   it from the archive and uses it against the local API.
+   The synthetic field-service token ships in `client/resources/lab-app-config.json`; these resources are packaged into `client/app.asar` (`npm run pack` in `client/`); extracting it from the archive and using it against the local API is one of the lab scenarios (see `spoilers/`).
 
 ## API endpoints
 
@@ -118,14 +113,14 @@ in the request body — GET bodies are unreliable across HTTP clients):
 | `POST /api/reservations/create` | authenticated | `{equipmentId, startsAt, endsAt, purpose?}` — booked for the caller. |
 | `POST /api/reservations/update` | owner / technician / admin | `{id, purpose?, status?, startsAt?, endsAt?}` — students may only edit/cancel their own. |
 | `POST /api/reservations/history` | authenticated | Ended / cancelled / completed reservations (own-only for students). |
-| `POST /api/reservations/search` | authenticated | `{q}` — **intentionally vulnerable to SQL injection (V2).** Everything else is parameterized. |
+| `POST /api/reservations/search` | authenticated | `{q}` — legacy string-concatenated filter (see the route source). Everything else is parameterized. |
 | `POST /api/diagnostics/run` | technician, admin | `{equipmentId}` — fetches the equipment's configured `diagnosticTarget`, records a `diagnostic_runs` row, refreshes `last_seen_at`. |
-| `POST /api/diagnostics/fetch` | technician, admin | `{equipmentId, target}` — fetches the **caller-supplied URL** server-side and returns the response. **Intentionally vulnerable to SSRF (V3).** |
-| `POST /api/field-service/fleet-sweep` | `X-Field-Token` header (no login token needed) | Fleet-wide equipment + all users' diagnostic run history. **Intentionally gated by a hard-coded synthetic token (V1).** |
+| `POST /api/diagnostics/fetch` | technician, admin | `{equipmentId, target}` — fetches the **caller-supplied URL** server-side with no allowlist and returns the response (see the route source). |
+| `POST /api/field-service/fleet-sweep` | `X-Field-Token` header (no login token needed) | Fleet-wide equipment + all users' diagnostic run history. authorized by the static synthetic field-service token alone (no login token). |
 
 ## lab-client.js (protocol CLI helper)
 
-CLI helper for manual protocol work and vulnerability demonstrations:
+CLI helper for manual protocol work and demonstrations:
 requests/caches the RC4 session, encrypts an arbitrary JSON payload,
 sends it to any endpoint, decrypts and prints the response. Not
 hard-coded to one call.
@@ -160,29 +155,21 @@ exactly three GET endpoints (`/api/status`, `/api/diagnostics`,
 not attached to `lab-edge`, so the host cannot reach it directly; only
 `lab-internal` members can (the api, via `http://lab-device:8080`).
 
-**Phase 5 — V3 is implemented:** `POST /api/diagnostics/fetch`
-(technician/admin) fetches a caller-supplied URL from the request body
-with no allowlist and no loopback/private-range blocking
-(`VULN-V3` in `services/api/src/routes/diagnostics.js`). The device is
-the exercise target: fetching `http://lab-device:8080/api/admin` through
-the api returns its synthetic, explicitly-not-real challenge value
-(`LAB{ssrf_internal_device_reached}`), proving the server reached the
-internal-only network on the caller's behalf — host → api → lab-device.
-Direct reachability from the api is independently demonstrated by
-`scripts/device-probe.js` (run inside the api container) and
-`scripts/verify-device.sh` (host side). See
-`docs/vulnerabilities/V3-SSRF.md` and `scripts/poc-v3-ssrf.js`.
+**Diagnostics fetch:** `POST /api/diagnostics/fetch` (technician/admin)
+fetches a caller-supplied URL from the request body with no allowlist and
+no loopback/private-range blocking (`services/api/src/routes/diagnostics.js`).
+The device is the designated target: fetching
+`http://lab-device:8080/api/admin` through the api returns its synthetic,
+explicitly-not-real marker value (`LAB{device_admin_console_reached}`),
+demonstrating the server reached the internal-only network on the caller's
+behalf — host → api → lab-device. Direct reachability from the api is
+independently demonstrated by `scripts/device-probe.js` (run inside the
+api container) and `scripts/verify-device.sh` (host side).
 
-## Vulnerability placement (coursework design)
+## Intentional weaknesses
 
-Vulnerabilities are introduced deliberately, one per phase, and each is
-documented under `docs/vulnerabilities/`:
-
-| Vuln | Phase | Location | Status |
-|---|---|---|---|
-| V1 hard-coded synthetic token | 5 | `services/api/src/fieldServiceToken.js` (`FIELD_SERVICE_TOKEN`, `VULN-V1`), checked in `services/api/src/routes/fieldService.js` `/fleet-sweep` | implemented + documented + PoC |
-| V2 SQL injection | 3 | `services/api/src/routes/reservations.js` `/search` — `// VULN-V2: INTENTIONAL SQL INJECTION` | implemented + documented + PoC |
-| V3 SSRF | 5 | `services/api/src/routes/diagnostics.js` `/fetch` — `VULN-V3` (server-side `fetch` of caller-controlled URL) | implemented + documented + PoC |
-| V4 unsafe Electron IPC | 6 | `client/v4-file-read.js` `readManual()` — `// VULN-V4: INTENTIONAL UNSAFE IPC FILE READ` (renderer-controlled path via `window.lab.readFile` → `ipcRenderer.invoke('lab:read-file')` → `ipcMain.handle`); insecure settings `contextIsolation:false`/`sandbox:false` in `client/main.js` | implemented + documented + tests + Electron smoke run |
+This application is intentionally vulnerable (see `SECURITY-LAB-NOTICE.md`).
+The registry of deliberate weaknesses and their writeups lives in the
+answer key: `spoilers/`.
 
 All other SQL in the api is parameterized; no accidental injection bugs.

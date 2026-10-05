@@ -2,7 +2,7 @@
 'use strict';
 
 /*
- * poc-v3-ssrf.js — proof-of-concept for lab vulnerability V3 (intentional
+ * Proof-of-concept for lab vulnerability V3 (intentional
  * server-side request forgery in POST /api/diagnostics/fetch).
  *
  * An authenticated TECHNICIAN (seeded credentials, documented in the
@@ -17,16 +17,16 @@
  *                    see scripts/verify-device.sh checks 7a/7b)
  *
  * Usage:
- *   node scripts/poc-v3-ssrf.js [--base http://127.0.0.1:3000]
+ *   node spoilers/poc/device-fetch.js [--base http://127.0.0.1:3000]
  */
-const LabEnvelope = require('../shared/protocol/envelope.js');
+const LabEnvelope = require('../../shared/protocol/envelope.js');
 
 const BASE = (process.argv.includes('--base')
   ? process.argv[process.argv.indexOf('--base') + 1]
   : process.env.LAB_BASE) || 'http://127.0.0.1:3000';
 
 const TARGET = 'http://lab-device:8080/api/admin';
-const CHALLENGE = 'LAB{ssrf_internal_device_reached}';
+const CHALLENGE = 'LAB{device_admin_console_reached}';
 
 function section(title) {
   console.log('\n=== ' + title + ' ===');
@@ -101,6 +101,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[poc-v3-ssrf] ' + err.message);
+  console.error('[device-fetch] ' + err.message);
   process.exit(1);
 });

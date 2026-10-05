@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 test('6. no shell/command execution capability exists', () => {
-  for (const f of ['main.js', 'preload.js', 'v4-file-read.js', 'api-client.js']) {
+  for (const f of ['main.js', 'preload.js', 'manual-reader.js', 'api-client.js']) {
     const src = read(f);
     assert.ok(!src.includes('child_process'), f + ' must not use child_process');
     assert.doesNotMatch(src, /\bexec(File|Sync|FileSync)?\s*\(/, f + ' must not call exec*');

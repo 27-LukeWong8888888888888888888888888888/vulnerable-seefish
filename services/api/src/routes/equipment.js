@@ -1,9 +1,8 @@
 'use strict';
 
 /*
- * Equipment endpoints — all queries parameterized (Phase 2 explicitly
- * forbids SQL injection here; the one intentional injection arrives with
- * the reservation search in Phase 3).
+ * Equipment endpoints — all queries parameterized. The reservation search
+ * route is the one deliberate exception — see its source.
  *
  * All protected endpoints are POST (the RC4 envelope travels in the
  * request body; fetch clients cannot send GET bodies):

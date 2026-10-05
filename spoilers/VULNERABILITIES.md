@@ -1,9 +1,10 @@
 # Vulnerabilities
 
-> **Spoilers.** This file lists every intentional vulnerability in the
-> lab, how to trigger it, and the exact proof that it fired. It is meant
-> for instructors, graders, and maintainers. Students working the
-> exercises should start from `docs/LAB-EXERCISES.md` instead.
+> **Spoilers.** This file is the answer-key registry: it lists every
+> intentional vulnerability in the lab, how to trigger it, and the
+> exact proof that it fired. It is meant for maintainers and lab
+> operators. Participants working the exercises should start from
+> `LAB-EXERCISES.md` (this directory) instead.
 >
 > These vulnerabilities are required by the coursework assignment and
 > must not be "fixed" (see `SECURITY-LAB-NOTICE.md`). All data is
@@ -11,9 +12,9 @@
 
 Exactly four vulnerabilities exist. Nothing else in the codebase is
 intentionally vulnerable — accidental bugs are treated as defects, not
-features. Each is documented in full under `docs/vulnerabilities/`; the
-per-vuln docs are the authoritative reference for payloads, expected
-responses, negative controls, and source analysis.
+features. Each is documented in full here in `spoilers/`; the
+per-vuln writeups are the authoritative reference for payloads,
+expected responses, negative controls, and source analysis.
 
 ### Three distinct secrets (do not conflate)
 
@@ -25,7 +26,7 @@ responses, negative controls, and source analysis.
 
 ## V1 — Hard-coded synthetic field-service token
 
-Full writeup: [`docs/vulnerabilities/V1-HARDCODED-TOKEN.md`](docs/vulnerabilities/V1-HARDCODED-TOKEN.md)
+Full writeup: [`V1-HARDCODED-TOKEN.md`](V1-HARDCODED-TOKEN.md)
 
 - **Affected feature:** field-service fleet sweep
   (`POST /api/field-service/fleet-sweep`).
@@ -38,9 +39,9 @@ Full writeup: [`docs/vulnerabilities/V1-HARDCODED-TOKEN.md`](docs/vulnerabilitie
   package (`client/resources/lab-app-config.json`, recoverable from
   `client/app.asar`).
 - **Reproduction:**
-  - API-side: `docker compose exec api node scripts/poc-v1-token.js`
+  - API-side: `docker compose exec -T api node spoilers/poc/fleet-sweep.js`
     (403 without the header, 200 with it).
-  - Package recovery: `node scripts/poc-v1-asar.js` (extracts the token
+  - Package recovery: `node spoilers/poc/package-recovery.js` (extracts the token
     from the packaged ASAR and uses it against the local API).
 - **Expected proof:** HTTP 200 with `fleet` (all equipment) plus
   `recentRuns` — every user's diagnostic history, which no ordinary
@@ -54,7 +55,7 @@ Full writeup: [`docs/vulnerabilities/V1-HARDCODED-TOKEN.md`](docs/vulnerabilitie
 
 ## V2 — SQL injection in reservation search
 
-Full writeup: [`docs/vulnerabilities/V2-SQL-INJECTION.md`](docs/vulnerabilities/V2-SQL-INJECTION.md)
+Full writeup: [`V2-SQL-INJECTION.md`](V2-SQL-INJECTION.md)
 
 - **Affected feature:** reservation search
   (`POST /api/reservations/search`, body field `q`) — the one query in
@@ -63,7 +64,7 @@ Full writeup: [`docs/vulnerabilities/V2-SQL-INJECTION.md`](docs/vulnerabilities/
   `bob` suffices).
 - **Prerequisites:** an RC4 session and a login token; the payload
   travels inside the envelope as `q = "x' OR 1=1 -- "`.
-- **Reproduction:** `docker compose exec api node scripts/poc-v2-sqli.js`
+- **Reproduction:** `docker compose exec -T api node spoilers/poc/reservation-search.js`
   (logs in as bob, runs a control search, then the injection), or
   `scripts/lab-client.js` manually — see the writeup.
 - **Expected proof:** bob's injected search returns every reservation,
@@ -78,7 +79,7 @@ Full writeup: [`docs/vulnerabilities/V2-SQL-INJECTION.md`](docs/vulnerabilities/
 
 ## V3 — Server-side request forgery (SSRF)
 
-Full writeup: [`docs/vulnerabilities/V3-SSRF.md`](docs/vulnerabilities/V3-SSRF.md)
+Full writeup: [`V3-SSRF.md`](V3-SSRF.md)
 
 - **Affected feature:** equipment diagnostics fetch
   (`POST /api/diagnostics/fetch`, body field `target`) — the API
@@ -90,10 +91,10 @@ Full writeup: [`docs/vulnerabilities/V3-SSRF.md`](docs/vulnerabilities/V3-SSRF.m
   host cannot reach directly — the internal-only lab device
   (`http://lab-device:8080/api/admin`), which has no published port on
   an `internal: true` Docker network.
-- **Reproduction:** `docker compose exec api node scripts/poc-v3-ssrf.js`
+- **Reproduction:** `docker compose exec -T api node spoilers/poc/device-fetch.js`
   (technician fetch of the device admin endpoint through the API).
 - **Expected proof:** HTTP 200 whose body contains the device's
-  synthetic challenge `LAB{ssrf_internal_device_reached}` — data only
+  synthetic challenge `LAB{device_admin_console_reached}` — data only
   reachable on the internal network, retrieved by the server on the
   caller's behalf. Controls: students get 403; an unreachable target
   returns 502 `fetch_failed`; host-side curls to the device fail
@@ -104,7 +105,7 @@ Full writeup: [`docs/vulnerabilities/V3-SSRF.md`](docs/vulnerabilities/V3-SSRF.m
 
 ## V4 — Unsafe IPC file read (Electron)
 
-Full writeup: [`docs/vulnerabilities/V4-UNSAFE-IPC.md`](docs/vulnerabilities/V4-UNSAFE-IPC.md)
+Full writeup: [`V4-UNSAFE-IPC.md`](V4-UNSAFE-IPC.md)
 
 - **Affected feature:** the desktop client's file viewer —
   `window.lab.readFile(path)` in the renderer → preload →
@@ -114,16 +115,16 @@ Full writeup: [`docs/vulnerabilities/V4-UNSAFE-IPC.md`](docs/vulnerabilities/V4-
 - **Required user role:** any JavaScript executing in the renderer —
   no extra primitive is needed with the insecure settings above.
 - **Prerequisites:** the Electron client running; the traversal string
-  `../proof/v4-proof.txt`.
+  `../internal/ops-memo.txt`.
 - **Reproduction:**
   - Deterministic: `cd client && node --test`
-    (`client/test/v4-ipc.test.js` drives the exact handler) and
+    (`client/test/manual-reader.test.js` drives the exact handler) and
     `bash client/scripts/smoke-electron.sh` (full chain in a real
     Electron window).
   - Manual: open the client, sign in, use the "File viewer" panel with
-    `../proof/v4-proof.txt`.
+    `../internal/ops-memo.txt`.
 - **Expected proof:** the proof file content is returned, including
-  `LAB{unsafe_ipc_path_traversal}`, and the resolved path is provably
+  `LAB{internal_notes_recovered}`, and the resolved path is provably
   outside `resources/manuals/`. Control: reading
   `equipment-manual.txt` returns the manual normally.
 - **Reset procedure:** none needed — the demonstration touches no

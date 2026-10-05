@@ -1,9 +1,18 @@
-# Instructor Notes
+# Operating Notes
 
 > This lab is **intentionally vulnerable** coursework
 > (`SECURITY-LAB-NOTICE.md`). Do not deploy it, do not expose it to a
 > network beyond the lab host, and do not "fix" the four documented
 > vulnerabilities. All credentials and data are synthetic.
+
+These are the operating notes for running the lab: architecture,
+seed facts, expected results for every proof, reset procedure, common
+mistakes, and the re-verification checks. The demo application plants
+exactly four weaknesses — a hard-coded credential, an injectable
+search query, a server-side fetch of a caller-controlled URL, and an
+unsafe file read over IPC — and the coursework walks through each one
+in turn. The clean tree (everything outside `spoilers/`) is the
+challenge; this directory is the answer key.
 
 ## 1. Architecture summary
 
@@ -29,7 +38,7 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Trust boundaries to teach explicitly:
+Trust boundaries:
 
 1. **renderer → preload/IPC → main process** — V4 lives here. With
    `contextIsolation: false` the bridge is a plain global, so any
@@ -44,7 +53,7 @@ Trust boundaries to teach explicitly:
 
 Transport note: RC4 "encryption" is itself part of the lesson — the
 session key is handed out in readable JSON by design
-(`PROTOCOL-RC4.md`). Do not let students mistake the envelope for
+(`PROTOCOL-RC4.md`). Participants must not mistake the envelope for
 security; it is the wire format, not a control.
 
 ## 2. Synthetic credentials (all lab-only, none real)
@@ -65,7 +74,7 @@ security; it is the wire format, not a control.
 | V1 | `service_secrets` table mirrors the token for realism, but the app validates the hard-coded constant. `fleet-sweep` reads all 23 equipment rows + all `diagnostic_runs` regardless of owner. |
 | V2 | Victim row: reservation **id 13**, owner `alice`, equipment `EQ-1002` "DNA Sequencer 4500", 2026-10-06 09:00–12:00 UTC, "Senior project: DNA sequencer calibration", `active`. Attacker `bob` sees 0 rows for `q="DNA"` and cannot list/fetch row 13 legitimately. |
 | V3 | `EQ-1001` (`equipmentId` 1) stores target `http://lab-device:8080/api/status`; the admin endpoint `/api/admin` on the device returns the challenge. Device is only on `lab-internal`. |
-| V4 | `client/resources/manuals/equipment-manual.txt` is the intended read; `client/resources/proof/v4-proof.txt` (containing `LAB{unsafe_ipc_path_traversal}`) is outside `manuals/`, reachable via `../proof/v4-proof.txt`. |
+| V4 | `client/resources/manuals/equipment-manual.txt` is the intended read; `client/resources/internal/ops-memo.txt` (containing `LAB{internal_notes_recovered}`) is outside `manuals/`, reachable via `../internal/ops-memo.txt`. |
 
 Live counts at handoff: 9 users, 4 locations, 23 equipment, 54
 reservations, 17 fault reports (counts drift upward as tests/PoCs add
@@ -75,10 +84,10 @@ synthetic rows; only the anchor facts above matter).
 
 | Proof | Command | Expected |
 |---|---|---|
-| V1 (api-side) | `docker compose exec api node scripts/poc-v1-token.js` | 403 without header / 200 with token; exit 0 |
-| V1 (package recovery) | `node scripts/poc-v1-asar.js` | token recovered from `client/app.asar`, then 200 `fleet-sweep`; exit 0 |
-| V2 | `docker compose exec api node scripts/poc-v2-sqli.js` | injected search returns row 13 (`alice`); exit 0 |
-| V3 | `docker compose exec api node scripts/poc-v3-ssrf.js` | response body contains `LAB{ssrf_internal_device_reached}`; exit 0 |
+| V1 (api-side) | `docker compose exec -T api node spoilers/poc/fleet-sweep.js` | 403 without header / 200 with token; exit 0 |
+| V1 (package recovery) | `node spoilers/poc/package-recovery.js` | token recovered from `client/app.asar`, then 200 `fleet-sweep`; exit 0 |
+| V2 | `docker compose exec -T api node spoilers/poc/reservation-search.js` | injected search returns row 13 (`alice`); exit 0 |
+| V3 | `docker compose exec -T api node spoilers/poc/device-fetch.js` | response body contains `LAB{device_admin_console_reached}`; exit 0 |
 | V4 (deterministic) | `cd client && node --test` | 11/11 pass |
 | V4 (real browser) | `bash client/scripts/smoke-electron.sh` | `SMOKE OK — all checks passed`; exit 0 |
 | Everything | `bash scripts/verify-lab.sh` | `ALL LAB CHECKS PASSED` (28 checks); exit 0 |
@@ -86,8 +95,8 @@ synthetic rows; only the anchor facts above matter).
 ## 5. Reset notes
 
 * V2/V3 and any API-side state: `docker compose down -v && docker
-  compose up -d --wait` recreates the DB from schema + seed. Report
-  this to students as the clean reset; it is the only destructive
+  compose up -d --wait` recreates the DB from schema + seed. This is
+  the clean reset to advertise for the lab; it is the only destructive
   step in the lab and it only touches this project's volume.
 * `diagnostic_runs` and `audit_log` accumulate harmlessly (synthetic
   rows); no reset is needed for V1/V3 unless you want pristine
@@ -98,7 +107,7 @@ synthetic rows; only the anchor facts above matter).
   rebuilds `client/app.asar` deterministically from source; deleting
   the archive is safe.
 
-## 6. Common student mistakes
+## 6. Common participant mistakes
 
 * **Attacking the envelope instead of the app.** The RC4 layer is
   not the vulnerability; treat it as a wire format. Every exercise
@@ -123,10 +132,10 @@ synthetic rows; only the anchor facts above matter).
 
 | Vuln | Quick check |
 |---|---|
-| V1 | `node scripts/poc-v1-asar.js` exits 0 and prints the recovered token; wrong/missing header → 403 (also asserted in `services/api/test/phase5.test.js` test 4). |
-| V2 | `docker compose exec api node scripts/poc-v2-sqli.js` shows row 13 in the injected result (phase3 test 7). |
-| V3 | `docker compose exec api node scripts/poc-v3-ssrf.js` returns the challenge (phase5 test 3); host curl to the device still fails (`scripts/verify-device.sh`). |
-| V4 | `cd client && node --test` and the smoke run both pass; `client/v4-file-read.js` still has no path validation. |
+| V1 | `node spoilers/poc/package-recovery.js` exits 0 and prints the recovered token; wrong/missing header → 403 (also asserted in `services/api/test/field-ops.test.js` test 4). |
+| V2 | `docker compose exec -T api node spoilers/poc/reservation-search.js` shows row 13 in the injected result (reservations test 7). |
+| V3 | `docker compose exec -T api node spoilers/poc/device-fetch.js` returns the challenge (field-ops test 3); host curl to the device still fails (`scripts/verify-device.sh`). |
+| V4 | `cd client && node --test` and the smoke run both pass; `client/manual-reader.js` still has no path validation. |
 
 ## 8. Verifying the safety boundaries remain intact
 
@@ -150,11 +159,11 @@ real defect, not a feature:
    `127.0.0.1:3000` only. `scripts/verify-device.sh` and
    `scripts/verify-lab.sh` section 3 assert this.
 4. **Only `/health` and `/api/session/key` are plaintext.** Every
-   other `/api` route requires the RC4 envelope (phase5 test 5).
+   other `/api` route requires the RC4 envelope (field-ops test 5).
 5. **All credentials remain synthetic.** The FS token is
    `FS-LAB-…`, login tokens `labtok-…`, passwords the documented
    `*Pass!23` set. Nothing real anywhere.
-6. **Exactly four vulnerabilities.** The Phase 7 source review greps
+6. **Exactly four vulnerabilities.** The final source review greps
    for accidental secrets, external targets, and new dangerous
    capabilities; anything found is a defect to fix — but the four
    documented vulnerabilities are never "remediated".

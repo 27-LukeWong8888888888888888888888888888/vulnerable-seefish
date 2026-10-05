@@ -2,7 +2,7 @@
 'use strict';
 
 /*
- * pack-asar.js — package the Electron client into client/app.asar (Phase 7).
+ * pack-asar.js — package the Electron client into client/app.asar.
  *
  * Stages a minimal app tree (.asar-build/) that mirrors the repo's two-level
  * layout — client/ sources + the shared protocol module at shared/ — because
@@ -15,8 +15,8 @@
  * which must stay on the real filesystem).
  *
  * The archive intentionally contains resources/lab-app-config.json with the
- * synthetic V1 token in cleartext — recoverability is the lab requirement
- * (see docs/vulnerabilities/V1-HARDCODED-TOKEN.md). Do not obfuscate it.
+ * synthetic field-service token in cleartext — recoverability from the
+ * package is part of the lab. Do not obfuscate it.
  *
  * Usage:  node scripts/pack-asar.js   (or: npm run pack)
  */
@@ -29,24 +29,24 @@ const REPO = path.join(CLIENT, '..');
 const STAGE = path.join(CLIENT, '.asar-build');
 const OUT = path.join(CLIENT, 'app.asar');
 
-const APP_FILES = ['main.js', 'preload.js', 'api-client.js', 'v4-file-read.js', 'package.json'];
+const APP_FILES = ['main.js', 'preload.js', 'api-client.js', 'manual-reader.js', 'package.json'];
 const COPY_DIRS = ['renderer', 'resources'];
 
-// every file that must be present for the packaged app to work (and the V1
-// lab artifact to be recoverable)
+// every file that must be present for the packaged app to work (and the
+// field-service artifact to be recoverable)
 const REQUIRED = [
   'package.json',
   'client/main.js',
   'client/preload.js',
   'client/api-client.js',
-  'client/v4-file-read.js',
+  'client/manual-reader.js',
   'client/package.json',
   'client/renderer/index.html',
   'client/renderer/app.js',
   'client/renderer/smoke.html',
   'client/resources/lab-app-config.json',
   'client/resources/manuals/equipment-manual.txt',
-  'client/resources/proof/v4-proof.txt',
+  'client/resources/internal/ops-memo.txt',
   'shared/protocol/rc4.js',
   'shared/protocol/envelope.js'
 ];
@@ -94,13 +94,13 @@ async function main() {
 
   const cfg = JSON.parse(asar.extractFile(OUT, 'client/resources/lab-app-config.json').toString('utf8'));
   if (!/^FS-LAB-/.test(cfg.fieldService && cfg.fieldService.token)) {
-    console.error('FAIL — synthetic V1 token not found in packaged lab-app-config.json');
+    console.error('FAIL — synthetic field-service token not found in packaged lab-app-config.json');
     process.exit(1);
   }
 
   const mb = (fs.statSync(OUT).size / 1024 / 1024).toFixed(1);
   console.log(`packed ${files.length} files -> ${path.relative(REPO, OUT)} (${mb} MiB)`);
-  console.log(`contents include: client/resources/lab-app-config.json (synthetic V1 token: ${cfg.fieldService.token})`);
+  console.log(`contents include: client/resources/lab-app-config.json (synthetic field-service token: ${cfg.fieldService.token})`);
   console.log('run packaged app:  (cd client && ./node_modules/.bin/electron --no-sandbox app.asar)');
 }
 

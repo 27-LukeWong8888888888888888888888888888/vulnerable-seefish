@@ -1,23 +1,23 @@
 'use strict';
 
 /*
- * Phase 3 verification — run inside the api container:
- *   docker compose exec api node --test services/api/test/phase3.test.js
+ * Reservations verification — run inside the api container:
+ *   docker compose exec api node --test services/api/test/reservations.test.js
  *
- * Covers the approved Phase 3 checklist:
+ * Covers the approved reservations checklist:
  *   functionality: list scoping, create (validation), update/cancel
  *   authorization, history
- *   V2:   normal search returns only own results
- *         ordinary search cannot retrieve another user's reservation
- *         intended payload retrieves the seeded cross-user reservation
- *         unrelated endpoint (equipment) remains parameterized
- *         unauthenticated requests rejected
- *         invalid RC4 sessions rejected
+ *   search:  normal search returns only own results
+ *            ordinary search cannot retrieve another user's reservation
+ *            intended payload retrieves the seeded cross-user reservation
+ *            unrelated endpoint (equipment) remains parameterized
+ *            unauthenticated requests rejected
+ *            invalid RC4 sessions rejected
  *
  * The suite creates two reservations per run in a window 60 days out and
  * deletes them again in test.before/test.after (see cleanup()), so the
  * shared dev DB stays at its seed baseline. It never touches the seeded
- * V2 victim row (id 13).
+ * cross-user anchor row (id 13).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -106,7 +106,7 @@ test('1. list scoping: students see only their own reservations, staff see all',
   // alice's seeded rows span active + completed statuses
   const statuses = new Set(aliceList.decrypted.map((r) => r.status));
   assert.ok(statuses.has('active') && statuses.has('completed'));
-  // detail fields required for the V2 proof are present on normal rows too
+  // detail fields required for the cross-user proof are present on normal rows too
   const row = aliceList.decrypted.find((r) => r.id === 13);
   assert.equal(row.assetTag, 'EQ-1002');
   assert.equal(row.equipmentName, 'DNA Sequencer 4500');
@@ -128,7 +128,7 @@ test('2. create: validation, ownership, and appearance in list', async () => {
   const s = await getKey();
   const bob = await login(s, 'bob', 'StudentPass!23');
   const window = futureWindow();
-  const purpose = 'P3 verification booking ' + Date.now().toString(36);
+  const purpose = 'RSV verification booking ' + Date.now().toString(36);
 
   let r = await encRequest(s, '/api/reservations/create', { token: bob, equipmentId: 3 });
   assert.equal(r.status, 400);
@@ -172,7 +172,7 @@ test('3. update/cancel: owners edit or cancel their own; other students are reje
 
   const created = await encRequest(s, '/api/reservations/create', {
     token: alice, equipmentId: 5, startsAt: window.startsAt, endsAt: window.endsAt,
-    purpose: 'P3 authorization test ' + Date.now().toString(36)
+    purpose: 'RSV authorization test ' + Date.now().toString(36)
   });
   assert.equal(created.status, 201);
   const id = created.decrypted.id;
@@ -217,11 +217,11 @@ test('4. history returns ended/cancelled/completed reservations only', async () 
   ));
   // alice's seeded completed reservation is in scope
   assert.ok(history.decrypted.some((r) => r.id === 1));
-  // the seeded active V2 victim row (ends in the future) must NOT be history
+  // the seeded active cross-user anchor row (ends in the future) must NOT be history
   assert.ok(!history.decrypted.some((r) => r.id === 13));
 });
 
-test('5. V2 normal search returns only the caller\'s own matches', async () => {
+test('5. normal search returns only the caller\'s own matches', async () => {
   const s = await getKey();
   const alice = await login(s, 'alice', 'StudentPass!23');
 
@@ -234,7 +234,7 @@ test('5. V2 normal search returns only the caller\'s own matches', async () => {
   assert.equal(missing.status, 400);
 });
 
-test('6. V2 ordinary search by another user does NOT retrieve alice\'s reservation', async () => {
+test('6. ordinary search by another user does NOT retrieve alice\'s reservation', async () => {
   const s = await getKey();
   const bob = await login(s, 'bob', 'StudentPass!23');
 
@@ -247,7 +247,7 @@ test('6. V2 ordinary search by another user does NOT retrieve alice\'s reservati
   assert.ok(!list.decrypted.some((x) => x.id === 13));
 });
 
-test('7. V2 injection payload retrieves the seeded cross-user reservation', async () => {
+test('7. crafted search filter retrieves the seeded cross-user reservation', async () => {
   const s = await getKey();
   const bob = await login(s, 'bob', 'StudentPass!23');
   const payload = "x' OR 1=1 -- ";

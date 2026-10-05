@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# verify-device.sh — Phase 4 network-topology and isolation checks (host side).
+# verify-device.sh — network-topology and isolation checks (host side).
 #
 # Verifies:
 #   1  lab-device container is running

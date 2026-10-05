@@ -4,7 +4,7 @@
  * Renderer UI — vanilla JS. No Node APIs here (nodeIntegration is off);
  * everything goes through the window.lab preload bridge:
  *   window.lab.api(...)   -> ipcRenderer.invoke('lab:api')  -> main -> HTTP + RC4
- *   window.lab.readFile() -> ipcRenderer.invoke('lab:read-file') -> main (V4 sink)
+ *   window.lab.readFile() -> ipcRenderer.invoke('lab:read-file') -> main (read-file handler)
  */
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -242,11 +242,11 @@
       JSON.stringify(res.body, null, 2));
   }));
 
-  $('btn-v4-read').addEventListener('click', () => guard(async (stale) => {
-    const requested = $('v4-path').value.trim();
+  $('btn-open-manual').addEventListener('click', () => guard(async (stale) => {
+    const requested = $('manual-file').value.trim();
     const text = await window.lab.readFile(requested);
     if (stale()) return;
-    renderJson($('v4-out'), text);
+    renderJson($('manual-out'), text);
   }));
 
   refreshLoginState().catch((err) => setStatus('Error: ' + err.message, true));

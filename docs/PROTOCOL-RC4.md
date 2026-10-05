@@ -51,7 +51,7 @@ with the same session key before being sent.
 Every other `/api` route requires the envelope. Plaintext JSON on a
 protected route → `400 missing_sid`; unknown `sid` → `401`;
 unauthenticated envelope → `401 auth_required`. (Asserted by
-phase5 test 5.) The middleware also rejects: a missing `data` field,
+field-ops test 5.) The middleware also rejects: a missing `data` field,
 an expired or revoked session, malformed ciphertext, and malformed
 decrypted JSON — every response is sealed with the same session key
 unless the failure happened before decryption.
@@ -69,7 +69,7 @@ unless the failure happened before decryption.
 * **Session rows persist the key** in Postgres (`rc4_sessions.key_b64`)
   until expiry.
 
-None of these are the four graded vulnerabilities — the envelope is
+These are not the weaknesses the exercises target — the envelope is
 the lab's transport flavor, and it must stay weak.
 
 ## Implementation map
@@ -83,9 +83,10 @@ the lab's transport flavor, and it must stay weak.
 * Client — only the **Electron main process** seals/opens
   (`client/api-client.js`, via the shared module); the renderer never
   holds the RC4 key. The server-side scripts (`scripts/lab-client.js`,
-  `scripts/poc-*.js`) do the same inside the api container.
+  and the scenario scripts under `spoilers/poc/`) do the same inside the
+  api container.
 * Tests — `shared/protocol/protocol.test.js` (7 unit tests), plus protocol
-  negative controls in `services/api/test/phase5.test.js`.
+  negative controls in `services/api/test/field-ops.test.js`.
 
 ## Boundary rule
 

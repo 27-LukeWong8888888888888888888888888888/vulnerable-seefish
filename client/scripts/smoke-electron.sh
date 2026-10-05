@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Real-Electron smoke run (Phase 6/7): boots the actual app with a hidden
-# window; renderer/smoke.html executes the V4 chain + login round trip and
+# Real-Electron smoke run: boots the actual app with a hidden
+# window; renderer/smoke.html executes the file-read chain + login round trip and
 # exits 0 on success. Uses the packaged app.asar when present (proving the
 # ASAR build works end to end), otherwise runs from source.
 set -euo pipefail

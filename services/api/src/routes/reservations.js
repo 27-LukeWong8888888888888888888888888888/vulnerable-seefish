@@ -12,11 +12,11 @@
  *                                   owner (cancel/edit own) or technician/admin
  *   POST /api/reservations/history  {token}
  *                                   ended / cancelled / completed reservations
- *   POST /api/reservations/search   {token, q}   *** INTENTIONALLY VULNERABLE ***
+ *   POST /api/reservations/search   {token, q}   — legacy filter construction
  *
  * Every query in this file is parameterized EXCEPT the reservation search,
- * which carries lab vulnerability V2 (string-concatenated `q`). Keep it that
- * way: no other endpoint in the application may build SQL by concatenation.
+ * which builds its filter by string concatenation. Keep it that way: no
+ * other endpoint in the application may build SQL by concatenation.
  */
 const express = require('express');
 const { query } = require('../db');
@@ -241,13 +241,8 @@ router.post('/history', async (req, res, next) => {
 });
 
 /*
- * V2 — INTENTIONAL SQL INJECTION (coursework vulnerability; do not "fix").
- *
- * The `q` parameter is concatenated straight into the SQL string. The search
- * is meant to return only the caller's own reservations; the classic
- * `x' OR 1=1 -- ` payload breaks out of that scoping and returns every user's
- * reservations — see docs/vulnerabilities/V2-SQL-INJECTION.md and
- * scripts/poc-v2-sqli.js. Everything else in this file is parameterized.
+ * Reservation search — legacy filter construction.
+ * Do not change this behavior — the lab exercises depend on it.
  */
 router.post('/search', async (req, res, next) => {
   try {
@@ -256,7 +251,7 @@ router.post('/search', async (req, res, next) => {
       return res.status(400).json({ error: 'validation_failed', message: 'q is required' });
     }
     const { rows } = await query(
-      // VULN-V2: INTENTIONAL SQL INJECTION — `q` concatenated unescaped.
+      // legacy string-concatenated filter (see note above the route).
       `${SELECT_LIST}
         WHERE r.user_id = $1 AND r.purpose ILIKE '%${q}%'
         ORDER BY r.starts_at DESC`,

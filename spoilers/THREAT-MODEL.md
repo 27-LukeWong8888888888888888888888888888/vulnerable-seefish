@@ -51,7 +51,7 @@
 | V1 | package holder | extract ASAR → config token → `X-Field-Token` → `POST /api/field-service/fleet-sweep` | fleet data + every user's run history, no account needed |
 | V2 | any authenticated user | `q = "x' OR 1=1 -- "` into `/api/reservations/search` | all users' reservations (horizontal bypass) |
 | V3 | technician | `target = http://lab-device:8080/api/admin` into `/api/diagnostics/fetch` | internal-only device data via the API's network position |
-| V4 | renderer-JS | `window.lab.readFile('../proof/v4-proof.txt')` | file read outside `resources/manuals/`, confined to the app's resource tree |
+| V4 | renderer-JS | `window.lab.readFile('../internal/ops-memo.txt')` | file read outside `resources/manuals/`, confined to the app's resource tree |
 
 Independence: each is exploitable alone (V1 with no login, V2 as any
 user, V3 as a technician, V4 with only renderer JS).
@@ -63,8 +63,8 @@ user, V3 as a technician, V4 with only renderer JS).
    API is `127.0.0.1:3000` only. Asserted by
    `scripts/verify-device.sh` and `scripts/verify-lab.sh` §3.
 2. **V4 stays inside the app's resource tree.** The proof is
-   complete when the traversal returns `LAB{unsafe_ipc_path_traversal}`
-   from `client/resources/proof/`. Host files (`/etc/passwd`, SSH
+   complete when the traversal returns `LAB{internal_notes_recovered}`
+   from `client/resources/internal/`. Host files (`/etc/passwd`, SSH
    keys, profiles, documents, credentials) are never targets in
    code, tests, PoCs, or docs.
 3. **Renderer cannot execute commands.** No `child_process`/shell in

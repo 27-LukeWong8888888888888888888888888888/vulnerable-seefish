@@ -12,7 +12,7 @@
  *   POST /api/fault-reports/update  {token, id, status?, resolution?}
  *                                                                 technician, admin
  *
- * All queries parameterized — Phase 2 must not introduce SQL injection.
+ * All queries parameterized.
  */
 const express = require('express');
 const { query } = require('../db');

@@ -14,8 +14,8 @@
 | IPC chain | renderer → `ipcRenderer.invoke('lab:read-file', path)` (preload) → `ipcMain.handle('lab:read-file')` (main) → `readManual(path)` |
 | Attacker model | any JavaScript executing in the renderer context (e.g. a stored-XSS payload, a compromised dependency, or anyone driving the UI). With `contextIsolation: false`, the bridge is a plain `window` global — no exploit primitive needed beyond running JS in the page |
 | Impact | the main process reads any file the desktop user can read and returns its content to the renderer. This coursework demonstration is confined to the designated proof file (see "Scope limitation") |
-| Exact location | `client/v4-file-read.js` — `readManual()`, comment `// VULN-V4: INTENTIONAL UNSAFE IPC FILE READ`; wired in `client/main.js` (`ipcMain.handle('lab:read-file', …)`), exposed in `client/preload.js` (`readFile`) |
-| Expected proof | `LAB{unsafe_ipc_path_traversal}` (contents of `client/resources/proof/v4-proof.txt`) |
+| Exact location | `client/manual-reader.js` — `readManual()`, comment ``// NOTE: `requested` is renderer-controlled and is joined onto the manuals``; wired in `client/main.js` (`ipcMain.handle('lab:read-file', …)`), exposed in `client/preload.js` (`readFile`) |
+| Expected proof | `LAB{internal_notes_recovered}` (contents of `client/resources/internal/ops-memo.txt`) |
 
 ## Intentionally insecure Electron settings
 
@@ -23,10 +23,10 @@
 
 ```js
 webPreferences: {
-  // INTENTIONALLY INSECURE (coursework lab — V4):
-  contextIsolation: false,  // preload shares the renderer context; window.lab is a plain global
-  sandbox: false,           // preload runs unsandboxed (Node available to the preload only)
-  nodeIntegration: false,   // the PAGE still gets no require() / Node APIs — do NOT enable
+  // INTENTIONALLY INSECURE (coursework lab — do not harden):
+  contextIsolation: false,
+  sandbox: false,
+  nodeIntegration: false, // do NOT enable; renderer gets no Node APIs
   preload: path.join(__dirname, 'preload.js')
 }
 ```
@@ -54,25 +54,27 @@ const lab = {
   readFile: (requested) => ipcRenderer.invoke('lab:read-file', requested),
   // ...
 };
-window.lab = lab; // contextIsolation:false — same context as the page
+// contextIsolation:false — same context as the page.
+window.lab = lab;
 ```
 
 The main process registers the sink (`client/main.js`):
 
 ```js
-// VULN-V4 sink — renderer-controlled filename, no path validation.
+// read-file handler — renderer-controlled filename, no path validation.
 ipcMain.handle('lab:read-file', (event, requested) => readManual(requested));
 ```
 
 And the sink joins the renderer-controlled string onto the manuals
-directory **with no validation** (`client/v4-file-read.js`):
+directory **with no validation** (`client/manual-reader.js`):
 
 ```js
-// VULN-V4: INTENTIONAL UNSAFE IPC FILE READ — `requested` is
-// renderer-controlled and is joined onto the manuals directory with NO path
-// validation: no basename() restriction, no resolve-and-prefix check. A
-// traversal such as '../proof/v4-proof.txt' therefore escapes the intended
-// manuals area…
+// NOTE: `requested` is renderer-controlled and is joined onto the manuals
+// directory with NO path validation: no basename() restriction, no
+// resolve-and-prefix check. A relative path such as '../internal/ops-memo.txt'
+// therefore escapes the intended manuals area and reads any file the
+// desktop user can read. Do not change this behavior — the lab exercises
+// depend on it.
 async function readManual(requested) {
   if (typeof requested !== 'string' || requested.length === 0) {
     throw new Error('filename required');
@@ -81,8 +83,8 @@ async function readManual(requested) {
 }
 ```
 
-`path.join('/…/resources/manuals', '../proof/v4-proof.txt')` resolves to
-`/…/resources/proof/v4-proof.txt` — outside the intended directory. A real
+`path.join('/…/resources/manuals', '../internal/ops-memo.txt')` resolves to
+`/…/resources/internal/ops-memo.txt` — outside the intended directory. A real
 application would `path.resolve()` and require the result to stay inside
 `MANUALS_DIR` (and would run with `contextIsolation: true` so the bridge is
 not a plain global).
@@ -97,8 +99,8 @@ client/resources/
 ├── lab-app-config.json        V1 synthetic FS token (see V1-HARDCODED-TOKEN.md)
 ├── manuals/
 │   └── equipment-manual.txt   normal file the viewer is supposed to serve
-└── proof/
-    └── v4-proof.txt           designated V4 proof artifact
+└── internal/
+    └── ops-memo.txt           designated V4 proof artifact
 ```
 
 ## Reproduction
@@ -107,12 +109,12 @@ client/resources/
 
 ```bash
 cd client
-node --test          # v4-ipc.test.js: checks 1–5
+node --test          # manual-reader.test.js: checks 1–5
 ```
 
 Asserts: a normal manuals read succeeds; the traversal string is accepted
 verbatim and resolves **outside** `resources/manuals/`; the proof file
-content, including `LAB{unsafe_ipc_path_traversal}`, is returned.
+content, including `LAB{internal_notes_recovered}`, is returned.
 
 ### 2. Full Electron smoke run (real browser process)
 
@@ -122,7 +124,7 @@ bash client/scripts/smoke-electron.sh
 
 Boots the real app with a hidden window and a smoke page that performs the
 whole chain in an actual renderer: `window.lab.readFile('equipment-manual.txt')`
-(normal read) and `window.lab.readFile('../proof/v4-proof.txt')` (traversal,
+(normal read) and `window.lab.readFile('../internal/ops-memo.txt')` (traversal,
 flag asserted), plus a login round-trip through the main-process RC4 client.
 Prints `SMOKE OK — all checks passed` and exits 0.
 
@@ -132,9 +134,9 @@ Prints `SMOKE OK — all checks passed` and exits 0.
 cd client && npm start        # Linux lab host: ./node_modules/.bin/electron --no-sandbox .
 ```
 
-1. Scroll to **File viewer — V4 demo**.
-2. Leave the prefilled `../proof/v4-proof.txt` and click **Read via IPC** —
-   the proof file content appears, including `LAB{unsafe_ipc_path_traversal}`.
+1. Scroll to **File viewer**.
+2. Leave the prefilled `../internal/ops-memo.txt` and click **Open file** —
+   the proof file content appears, including `LAB{internal_notes_recovered}`.
 3. For the control, enter `equipment-manual.txt` and read again — the manual
    appears (normal, intended behaviour).
 
@@ -142,15 +144,15 @@ cd client && npm start        # Linux lab host: ./node_modules/.bin/electron --n
 
 1. **Normal read (control):** `readFile('equipment-manual.txt')` returns the
    manual — the viewer works as designed for files inside `resources/manuals/`.
-2. **Renderer-controlled passthrough:** the string `'../proof/v4-proof.txt'`
+2. **Renderer-controlled passthrough:** the string `'../internal/ops-memo.txt'`
    is forwarded by the preload unchanged and accepted by the sink — asserted
-   by `client/test/v4-ipc.test.js` test 2 (the resolved path is provably
+   by `client/test/manual-reader.test.js` test 2 (the resolved path is provably
    outside `MANUALS_DIR`) and by the Electron smoke run.
-3. **Traversal + flag:** `readFile('../proof/v4-proof.txt')` returns the file
-   content with `LAB{unsafe_ipc_path_traversal}` — asserted by
-   `client/test/v4-ipc.test.js` tests 2–3 and the smoke run.
+3. **Traversal + flag:** `readFile('../internal/ops-memo.txt')` returns the file
+   content with `LAB{internal_notes_recovered}` — asserted by
+   `client/test/manual-reader.test.js` tests 2–3 and the smoke run.
 4. **No command execution:** `client/test/surface.test.js` asserts none of
-   `main.js` / `preload.js` / `v4-file-read.js` / `api-client.js` uses
+   `main.js` / `preload.js` / `manual-reader.js` / `api-client.js` uses
    `child_process`, `exec*`, `spawn`, or `fork`, and that the preload's only
    `require()` is `'electron'`.
 
@@ -158,13 +160,13 @@ cd client && npm start        # Linux lab host: ./node_modules/.bin/electron --n
 
 | # | Check | Where |
 |---|---|---|
-| 1 | Normal manuals read succeeds | v4-ipc test 1, smoke `[2]` |
-| 2 | Traversal string passes through unvalidated and resolves outside manuals | v4-ipc test 2, smoke `[3]` |
-| 3 | Proof file returned, flag present | v4-ipc test 3, smoke `[3]` |
+| 1 | Normal manuals read succeeds | manual-reader test 1, smoke `[2]` |
+| 2 | Traversal string passes through unvalidated and resolves outside manuals | manual-reader test 2, smoke `[3]` |
+| 3 | Proof file returned, flag present | manual-reader test 3, smoke `[3]` |
 | 4 | No shell/command execution (`child_process`, `exec*`, `spawn`, `fork` absent) | surface test 6 |
 | 5 | Preload requires only `'electron'`; fixed narrow surface | surface test 7 |
 | 6 | `nodeIntegration: false` — page has no `require()` (page boot + bridge-only access verified in the smoke run) | smoke `[1]`, main.js settings |
-| 7 | V1/V2/V3 endpoints and PoCs unchanged and still passing | phase5 suite + `poc-v1-token.js` / `poc-v2-sqli.js` / `poc-v3-ssrf.js` |
+| 7 | V1/V2/V3 endpoints and PoCs unchanged and still passing | field-ops suite + `spoilers/poc/fleet-sweep.js` / `reservation-search.js` / `device-fetch.js` |
 
 ## Scope limitation (important)
 
@@ -179,7 +181,7 @@ reader:
   be used in the demonstration or the tests;
 * the handler is unvalidated *by design* (that is the vulnerability), but
   the coursework proof is complete the moment the traversal escapes
-  `resources/manuals/` and returns `LAB{unsafe_ipc_path_traversal}`.
+  `resources/manuals/` and returns `LAB{internal_notes_recovered}`.
 
 ## Test layering note
 
@@ -188,7 +190,7 @@ window) is intentionally not part of this phase: the environment has no such
 runner and adding one would pull in a large dependency tree for no
 coursework value. Instead, V4 is covered by two honest layers:
 
-1. `client/test/v4-ipc.test.js` — deterministic `node:test` suite over the
+1. `client/test/manual-reader.test.js` — deterministic `node:test` suite over the
    exact handler `ipcMain.handle('lab:read-file')` delegates to (no display).
 2. `client/scripts/smoke-electron.sh` — a **real** Electron launch (main +
    preload + renderer page in a hidden window) that executes the full

@@ -1,4 +1,4 @@
-# Campus lab booking API — runtime image (Phase 2).
+# Campus lab booking API — runtime image.
 # Build context is the repository root (see compose.yaml).
 # The image mirrors the repo layout so relative requires (e.g.
 # src/ -> ../../shared) resolve identically on host and in the container.
@@ -12,6 +12,7 @@ RUN cd services/api && npm ci --omit=dev
 COPY services/api/ services/api/
 COPY shared/ shared/
 COPY scripts/ scripts/
+COPY spoilers/poc/ spoilers/poc/
 
 EXPOSE 3000
 CMD ["node", "services/api/server.js"]

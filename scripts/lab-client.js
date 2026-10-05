@@ -6,8 +6,8 @@
  *
  * Performs the full cycle: request /api/session/key, cache the session,
  * encrypt an arbitrary JSON payload, send it to any endpoint, decrypt the
- * envelope response, print the JSON. Later phases use this to demonstrate
- * the protocol weaknesses and vulnerabilities.
+ * envelope response, print the JSON. It is the shared helper for working
+ * with the protocol and its documented weaknesses.
  *
  * Usage:
  *   node scripts/lab-client.js --endpoint /api/auth/login \

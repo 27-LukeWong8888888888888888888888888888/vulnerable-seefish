@@ -1,18 +1,18 @@
 'use strict';
 
 /*
- * Electron main process — campus lab booking desktop client (Phase 6).
+ * Electron main process — campus lab booking desktop client.
  *
- * Intentionally insecure lab build (V4): webPreferences use
+ * Intentionally insecure lab build: webPreferences use
  * contextIsolation:false + sandbox:false so the preload shares the renderer
- * context and the V4 file-read bridge is reachable as a plain window global.
+ * context and the read-file bridge is reachable as a plain window global.
  * nodeIntegration stays OFF — the page itself still has no Node require().
- * See docs/vulnerabilities/V4-UNSAFE-IPC.md. Do not "harden" these settings.
+ * Do not "harden" these settings.
  */
 const path = require('node:path');
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { ApiClient } = require('./api-client.js');
-const { readManual } = require('./v4-file-read.js');
+const { readManual } = require('./manual-reader.js');
 
 const APP_CONFIG = require('./resources/lab-app-config.json');
 const BASE = process.env.LAB_API_BASE || APP_CONFIG.apiBase || 'http://127.0.0.1:3000';
@@ -32,7 +32,7 @@ function createWindow() {
     show: !SMOKE,
     autoHideMenuBar: true,
     webPreferences: {
-      // INTENTIONALLY INSECURE (coursework lab — V4):
+      // INTENTIONALLY INSECURE (coursework lab — do not harden):
       contextIsolation: false,
       sandbox: false,
       nodeIntegration: false, // do NOT enable; renderer gets no Node APIs
@@ -52,12 +52,12 @@ app.whenReady().then(() => {
   ipcMain.handle('lab:logout', () => api.logout());
   ipcMain.handle('lab:login-state', () => ({ user: api.user, hasToken: Boolean(api.token) }));
 
-  // V1 coursework artifact: synthetic field-service token shipped in local
-  // app resources. Phase 7 packages these resources into the ASAR; the
+  // Coursework artifact: synthetic field-service token shipped in local
+  // app resources. These resources are packaged into the ASAR; the
   // recovery-from-package proof completes there.
   ipcMain.handle('lab:app-config', () => APP_CONFIG);
 
-  // VULN-V4 sink — renderer-controlled filename, no path validation.
+  // read-file handler — renderer-controlled filename, no path validation.
   ipcMain.handle('lab:read-file', (event, requested) => readManual(requested));
 
   if (SMOKE) {

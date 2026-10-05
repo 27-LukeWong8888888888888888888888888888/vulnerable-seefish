@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # verify-lab.sh — single reproducible verification entry point for the
-# campus-lab-booking security lab (Phase 7).
+# campus-lab-booking security lab.
 #
 # Runs every verification layer and prints an explicit PASS/FAIL line per
 # check plus a final summary. Exit code 0 = everything verified.
@@ -17,7 +17,7 @@
 #     is auto-detected; if no Node is found those checks FAIL with a hint.
 #
 # Non-destructive: the only write actions are (a) building client/app.asar
-# if it is missing, and (b) the lab's own idempotent test/PoC runs, which
+# if it is missing, and (b) test/scenario runs, which
 # only add their own synthetic rows (as documented in README.md).
 
 set -uo pipefail
@@ -117,7 +117,7 @@ run_grep "seed: equipment fleet present (>= 22 rows incl. EQ-1001/EQ-1002)" "^2$
   "$PSQL \"select count(*) from equipment where asset_tag in ('EQ-1001','EQ-1002');\""
 run_grep "seed: reservations present (>= 32 rows)" "^t$" bash -c \
   "$PSQL \"select count(*) >= 32 from reservations;\""
-run_grep "seed: V2 victim row 13 exists (alice, active)" "^13\|alice\|active$" bash -c \
+run_grep "seed: reservation row 13 exists (alice, active)" "^13\|alice\|active$" bash -c \
   "$PSQL \"select r.id, u.username, r.status from reservations r join users u on u.id = r.user_id where r.id = 13;\""
 
 # --------------------------------------------------------------- section 3
@@ -145,38 +145,38 @@ fi
 section "4. Protocol and API regression suites"
 run_grep "protocol unit tests (7/7)" "^# fail 0" \
   docker run --rm -v "$REPO/shared:/src" -w /src/protocol node:22-alpine node --test
-run_grep "API test suites phase2+3+5+bugfix (34/34)" "^# fail 0" \
-  docker compose exec -T api node --test services/api/test/phase2.test.js services/api/test/phase3.test.js services/api/test/phase5.test.js services/api/test/bugfix.test.js
+run_grep "API test suites core+reservations+field-ops+regression (34/34)" "^# fail 0" \
+  docker compose exec -T api node --test services/api/test/core.test.js services/api/test/reservations.test.js services/api/test/field-ops.test.js services/api/test/bugfix.test.js
 run_grep "device + network topology checks (9/9)" "ALL 9 CHECKS PASSED" \
   bash scripts/verify-device.sh
 
 # --------------------------------------------------------------- section 5
-section "5. Electron client (V4 layers)"
+section "5. Electron client"
 if find_host_node; then
   run_grep "client test suites (11/11)" "^# fail 0" bash -c 'cd client && node --test'
-  run "Electron smoke run (real browser: V4 chain + login)" bash client/scripts/smoke-electron.sh
+  run "Electron smoke run (real browser: file-read chain + login)" bash client/scripts/smoke-electron.sh
 else
   bad "client test suites (11/11) — host Node.js 22 not found (tarball install under \$HOME works)"
   bad "Electron smoke run — host Node.js 22 not found"
 fi
 
 # --------------------------------------------------------------- section 6
-section "6. Vulnerability PoCs (V1 api-side, V2, V3)"
-run "V1 PoC: hard-coded FS token (api-side)" docker compose exec -T api node scripts/poc-v1-token.js
-run "V2 PoC: SQL injection in reservation search" docker compose exec -T api node scripts/poc-v2-sqli.js
-run "V3 PoC: SSRF to internal lab device" docker compose exec -T api node scripts/poc-v3-ssrf.js
+section "6. Scenario checks (api-side)"
+run "scenario: fleet sweep (api-side)" docker compose exec -T api node spoilers/poc/fleet-sweep.js
+run "scenario: reservation search (api-side)" docker compose exec -T api node spoilers/poc/reservation-search.js
+run "scenario: device fetch (api-side)" docker compose exec -T api node spoilers/poc/device-fetch.js
 
 # --------------------------------------------------------------- section 7
-section "7. ASAR packaging and V1 package-recovery proof"
+section "7. ASAR packaging and package recovery"
 if find_host_node; then
   if [ -f client/app.asar ]; then
     ok "client/app.asar exists"
   else
     run "build client/app.asar (npm run pack)" bash -c 'cd client && npm run pack'
   fi
-  run "V1 ASAR recovery PoC (token from package -> local API)" node scripts/poc-v1-asar.js
+  run "package-recovery check (config token from package -> local API)" node spoilers/poc/package-recovery.js
 else
-  bad "V1 ASAR recovery PoC — host Node.js 22 not found"
+  bad "package-recovery check — host Node.js 22 not found"
 fi
 
 # ---------------------------------------------------------------- summary

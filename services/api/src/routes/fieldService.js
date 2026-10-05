@@ -1,16 +1,16 @@
 'use strict';
 
 /*
- * Vendor field-service endpoint (Phase 5) — authenticated ONLY by the
- * hard-coded synthetic token in src/fieldServiceToken.js (VULN-V1).
+ * Vendor field-service endpoint — authenticated ONLY by the hard-coded
+ * synthetic token in src/fieldServiceToken.js.
  *
  *   POST /api/field-service/fleet-sweep   (header: X-Field-Token)
  *
  * No user login token is consulted: possession of the static FS token is
  * sufficient, with any account role or none at all (the RC4 transport
  * session is still required, like every other /api route). The same token
- * ships inside the Electron client (Phase 7) and is recoverable from the
- * ASAR. Synthetic coursework vuln — do not fix.
+ * ships inside the Electron client and is recoverable from the ASAR.
+ * Intentional lab behavior — do not "fix".
  *
  * Returns fleet-wide equipment diagnostics plus every user's diagnostic
  * run history — data no ordinary user role can see.

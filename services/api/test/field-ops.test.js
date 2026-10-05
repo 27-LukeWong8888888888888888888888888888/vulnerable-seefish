@@ -1,18 +1,15 @@
 'use strict';
 
 /*
- * Phase 5 verification — run inside the api container:
- *   docker compose exec api node --test services/api/test/phase5.test.js
+ * Field-ops verification — run inside the api container:
+ *   docker compose exec api node --test services/api/test/field-ops.test.js
  *
  * Covers:
  *   1  /api/diagnostics/run    — technician-gated, configured target,
  *                                 result recorded
  *   2  /api/diagnostics/fetch  — technician-gated, validation errors
- *   3  V3 SSRF                 — technician fetches internal device admin
- *                                 challenge through the API
- *   4  V1 hard-coded token     — /api/field-service/fleet-sweep rejects
- *                                 user auth, accepts the FS token alone,
- *                                 exposes cross-user history
+ *   3  caller-supplied target  — technician fetches internal device admin
+ *   4  field-service token    — vendor sweep works with the config token
  *   5  negative controls       — envelope/session enforcement on the new
  *                                 endpoints; unreachable target -> 502
  */
@@ -24,7 +21,7 @@ const { query } = require('../src/db');
 const LabEnvelope = require('../../../shared/protocol/envelope.js');
 
 const FS_TOKEN = 'FS-LAB-7f3a9c1e-4b2d-8e6f-a5c0-1d9b3e7f2a48';
-const CHALLENGE = 'LAB{ssrf_internal_device_reached}';
+const CHALLENGE = 'LAB{device_admin_console_reached}';
 const DEVICE_STATUS_URL = 'http://lab-device:8080/api/status';
 const DEVICE_ADMIN_URL = 'http://lab-device:8080/api/admin';
 
@@ -134,7 +131,7 @@ test('2. diagnostics/fetch is technician-gated and validates input', async () =>
   assert.equal(r.decrypted.error, 'fetch_failed');
 });
 
-test('3. V3 SSRF: technician fetches the internal device admin challenge', async () => {
+test('3. technician fetches the internal device admin payload', async () => {
   const s = await getKey();
   const tech = await login(s, 'tech1', 'TechPass!23');
 
@@ -154,7 +151,7 @@ test('3. V3 SSRF: technician fetches the internal device admin challenge', async
   assert.ok(r2.decrypted.body.includes('LABDEV-1001'), r2.decrypted.body);
 });
 
-test('4. V1: fleet-sweep is authorized by the hard-coded FS token alone', async () => {
+test('4. fleet-sweep is authorized by the hard-coded FS token alone', async () => {
   const s = await getKey();
   const alice = await login(s, 'alice', 'StudentPass!23');
 

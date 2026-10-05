@@ -1,9 +1,8 @@
 # Security Lab Notice
 
 This repository is an **intentionally vulnerable** application built for
-coursework. Later phases introduce deliberate, documented vulnerabilities
-(hard-coded token, SQL injection, SSRF, unsafe Electron IPC) so that they can
-be studied in a controlled environment.
+coursework. It contains deliberate, documented weaknesses so they can be
+studied in a controlled environment.
 
 Rules for this lab:
 
@@ -12,7 +11,6 @@ Rules for this lab:
 2. **Synthetic data only.** All users, passwords, tokens, device data, and
    challenge values are fake and exist solely inside this project.
 3. **Do not "fix" vulnerabilities** unless an exercise explicitly says to.
-   Each one is registered in `VULNERABILITIES.md` (repo root) with full
-   writeups in `docs/vulnerabilities/`, and covered by vuln-presence
-   tests.
+   Each one is registered in the answer key under `spoilers/` with full
+   writeups, and covered by presence tests.
 4. The lab must never be reachable from a network you do not control.

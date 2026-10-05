@@ -1,0 +1,13 @@
+Internal operations memo — instrument maintenance
+=================================================
+
+This memo is kept with the desktop client's resources for the lab
+operations team. It is stored outside the equipment-manual set on
+purpose so the manual viewer does not list it.
+
+Marker: LAB{internal_notes_recovered}
+
+Nothing in this memo is credential material: it contains no passwords,
+tokens, or personal data. The calibration rig in Bldg C — 214 is serviced
+twice per year; the next service window is booked through the standard
+reservation queue.
