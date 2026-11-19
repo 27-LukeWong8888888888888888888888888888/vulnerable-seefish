@@ -1,17 +1,6 @@
 'use strict';
 
-/*
- * Equipment endpoints — all queries parameterized. The reservation search
- * route is the one deliberate exception — see its source.
- *
- * All protected endpoints are POST (the RC4 envelope travels in the
- * request body; fetch clients cannot send GET bodies):
- *
- *   POST /api/equipment/list    {token, status?, locationId?, q?}
- *   POST /api/equipment/get     {token, id}
- *   POST /api/equipment/create  {token, assetTag, name, category, locationId, ...}  (admin)
- *   POST /api/equipment/update  {token, id, status?, firmwareVersion?}              (technician, admin)
- */
+
 const express = require('express');
 const { query } = require('../db');
 const { requireRole } = require('../requireAuth');

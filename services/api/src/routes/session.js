@@ -1,10 +1,6 @@
 'use strict';
 
-/*
- * POST /api/session/key — plaintext endpoint.
- * Issues a fresh RC4 session key in READABLE JSON over plain HTTP
- * (deliberate protocol weakness; the assignment forbids TLS/PSK/PKI here).
- */
+
 const express = require('express');
 const { createSession } = require('../sessions');
 

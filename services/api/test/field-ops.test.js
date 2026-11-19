@@ -1,18 +1,6 @@
 'use strict';
 
-/*
- * Field-ops verification — run inside the api container:
- *   docker compose exec api node --test services/api/test/field-ops.test.js
- *
- * Covers:
- *   1  /api/diagnostics/run    — technician-gated, configured target,
- *                                 result recorded
- *   2  /api/diagnostics/fetch  — technician-gated, validation errors
- *   3  caller-supplied target  — technician fetches internal device admin
- *   4  field-service token    — vendor sweep works with the config token
- *   5  negative controls       — envelope/session enforcement on the new
- *                                 endpoints; unreachable target -> 502
- */
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

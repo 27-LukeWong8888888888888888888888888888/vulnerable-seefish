@@ -1,22 +1,6 @@
 'use strict';
 
-/*
- * Simulated internal laboratory device — synthetic JSON service.
- *
- * Plain node:http, no framework, no dependencies. This container models an
- * instrument that lives on the campus-internal lab network only. It is the
- * designated internal target for the diagnostics-fetch exercises: reachable
- * FROM the api container by Docker service-name DNS (http://lab-device:8080),
- * unreachable from the host.
- *
- * Endpoints (exactly these three, GET only, JSON only):
- *   GET /api/status       deviceId, type, state, location, uptimeSec
- *   GET /api/diagnostics  temperatureC, firmwareVersion, errorCount, lastMaintenance
- *   GET /api/admin        SYNTHETIC device-admin challenge value for the
- *                         security lab — NOT a real credential.
- *
- * All values are synthetic.
- */
+
 const http = require('node:http');
 
 const PORT = Number(process.env.DEVICE_PORT || 8080);

@@ -1,23 +1,6 @@
 'use strict';
 
-/*
- * Reservation endpoints. All protected endpoints are POST (the RC4 envelope
- * travels in the request body; fetch clients cannot send GET bodies).
- *
- *   POST /api/reservations/list     {token, status?, equipmentId?}
- *                                   students: own only; technicians/admins: all
- *   POST /api/reservations/create   {token, equipmentId, startsAt, endsAt, purpose?}
- *                                   any authenticated user, booked for self
- *   POST /api/reservations/update   {token, id, purpose?, status?, startsAt?, endsAt?}
- *                                   owner (cancel/edit own) or technician/admin
- *   POST /api/reservations/history  {token}
- *                                   ended / cancelled / completed reservations
- *   POST /api/reservations/search   {token, q}   — legacy filter construction
- *
- * Every query in this file is parameterized EXCEPT the reservation search,
- * which builds its filter by string concatenation. Keep it that way: no
- * other endpoint in the application may build SQL by concatenation.
- */
+
 const express = require('express');
 const { query } = require('../db');
 
@@ -91,8 +74,7 @@ router.post('/create', async (req, res, next) => {
     if (ends.value <= starts.value) {
       return res.status(400).json({ error: 'validation_failed', message: 'endsAt must be after startsAt' });
     }
-    // Bookability and overlap pre-checks (unknown equipmentId is still
-    // reported by the INSERT's foreign-key catch below).
+    
     const eq = await query('SELECT status FROM equipment WHERE id = $1', [b.equipmentId]);
     if (eq.rows.length > 0) {
       if (eq.rows[0].status === 'maintenance' || eq.rows[0].status === 'retired') {
@@ -146,7 +128,7 @@ router.post('/update', async (req, res, next) => {
     if (!isOwner && req.user.role === 'student') {
       return res.status(403).json({ error: 'forbidden', message: 'students may only modify their own reservations' });
     }
-    // cancelled/completed are terminal — no further changes of any kind.
+   
     if (existing.status === 'cancelled' || existing.status === 'completed') {
       return res.status(409).json({
         error: 'conflict',
@@ -172,15 +154,14 @@ router.post('/update', async (req, res, next) => {
       params.push(newEnds.value);
       sets.push(`ends_at = $${params.length}`);
     }
-    // The effective window (new value or stored value) must stay temporally
-    // possible — updating only one side is checked against the other side.
+    
     const effStarts = newStarts ? newStarts.value : new Date(existing.startsAt).toISOString();
     const effEnds = newEnds ? newEnds.value : new Date(existing.endsAt).toISOString();
     if (Date.parse(effEnds) <= Date.parse(effStarts)) {
       return res.status(400).json({ error: 'validation_failed', message: 'endsAt must be after startsAt' });
     }
     if (b.status !== undefined) {
-      // Students may only ever cancel; staff (and non-student owners) set any.
+      
       if (req.user.role === 'student' && b.status !== 'cancelled') {
         return res.status(403).json({ error: 'forbidden', message: 'students may only cancel their own reservations' });
       }
@@ -190,8 +171,7 @@ router.post('/update', async (req, res, next) => {
     if (sets.length === 0) {
       return res.status(400).json({ error: 'validation_failed', message: 'nothing to update (purpose, status, startsAt, endsAt)' });
     }
-    // Overlap pre-check, but only when the window moves (the row itself is
-    // excluded so a legitimate reschedule is never blocked by its old window).
+    
     if (newStarts || newEnds) {
       const clash = await query(
         `SELECT id FROM reservations
@@ -240,10 +220,7 @@ router.post('/history', async (req, res, next) => {
   }
 });
 
-/*
- * Reservation search — legacy filter construction.
- * Do not change this behavior — the lab exercises depend on it.
- */
+
 router.post('/search', async (req, res, next) => {
   try {
     const q = (req.body || {}).q;
@@ -251,7 +228,7 @@ router.post('/search', async (req, res, next) => {
       return res.status(400).json({ error: 'validation_failed', message: 'q is required' });
     }
     const { rows } = await query(
-      // legacy string-concatenated filter (see note above the route).
+      
       `${SELECT_LIST}
         WHERE r.user_id = $1 AND r.purpose ILIKE '%${q}%'
         ORDER BY r.starts_at DESC`,

@@ -1,12 +1,6 @@
 'use strict';
 
-/*
- * RC4 transport-session store, backed by the rc4_sessions table.
- *
- * This is the session whose key is handed out in readable JSON by
- * POST /api/session/key — deliberately exposed by the assignment spec.
- * It is NOT the application login: see appTokens.js for that.
- */
+
 const crypto = require('node:crypto');
 const { query } = require('./db');
 const config = require('./config');

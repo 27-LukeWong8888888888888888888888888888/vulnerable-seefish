@@ -1,25 +1,6 @@
 'use strict';
 
-/*
- * Equipment diagnostics — both endpoints fetch a URL SERVER-SIDE and
- * record a diagnostic_runs row.
- *
- *   POST /api/diagnostics/run    (technician, admin)
- *       { equipmentId } — intended behaviour: the server fetches the
- *       equipment's CONFIGURED diagnostic_target from the database. The
- *       caller does not choose the URL.
- *
- *   POST /api/diagnostics/fetch  (technician, admin)
- *       { equipmentId, target } — `target` comes from the request body and
- *       is fetched by the server with NO allowlist and NO loopback /
- *       private-range / link-local blocking (redirects are followed). A
- *       technician can therefore make the server reach anything the api
- *       container can reach — including the internal-only lab device.
- *       Intentional lab behavior — do not "fix".
- *
- * The fetched body is returned to the caller in full (capped), which is
- * what makes the internal device challenge retrievable through the API.
- */
+
 const express = require('express');
 const { query } = require('../db');
 const { requireRole } = require('../requireAuth');
@@ -41,9 +22,6 @@ async function lookupEquipment(equipmentId) {
 
 async function fetchTarget(target) {
   const started = Date.now();
-  // `target` is caller-controlled and there is deliberately no URL
-  // validation here — no scheme/host allowlist, no loopback or
-  // private-range blocking. Redirects are followed.
   const resp = await fetch(target, { redirect: 'follow', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   const text = (await resp.text()).slice(0, MAX_BODY_CHARS);
   return { resp, text, durationMs: Date.now() - started };

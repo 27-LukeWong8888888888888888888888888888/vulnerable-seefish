@@ -1,15 +1,6 @@
 'use strict';
 
-/*
- * Express application wiring.
- *
- * Plaintext endpoints (before the envelope middleware):
- *   GET  /health
- *   POST /api/session/key
- *
- * Everything else under /api requires a valid RC4 envelope; the decrypted
- * payload replaces req.body, and every response is sealed in the envelope.
- */
+
 const express = require('express');
 const { query } = require('./db');
 const { envelopeMiddleware } = require('./envelopeMiddleware');
@@ -36,18 +27,16 @@ function createApp() {
     }
   });
 
-  // Router mounted with app.use so the mount prefix is stripped and its
-  // internal "/" route matches.
+  
   app.use('/api/session/key', sessionRoutes);
 
-  // Protected: envelope required for everything below.
+ 
   app.use('/api', envelopeMiddleware);
   app.use('/api/auth', authRoutes);
   app.use('/api/equipment', requireAuth, equipmentRoutes);
   app.use('/api/fault-reports', requireAuth, faultRoutes);
   app.use('/api/reservations', requireAuth, reservationRoutes);
-  // Diagnostics needs a logged-in technician/admin; field-service is gated
-  // solely by the hard-coded FS token, not by a user login token.
+  
   app.use('/api/diagnostics', requireAuth, diagnosticsRoutes);
   app.use('/api/field-service', fieldServiceRoutes);
 
@@ -55,9 +44,7 @@ function createApp() {
     res.status(404).json({ error: 'not_found' });
   });
 
-  // JSON error handler. Requests that already passed the envelope middleware
-  // get encrypted errors automatically (res.json was wrapped there).
-  // eslint-disable-next-line no-unused-vars
+  
   app.use((err, req, res, next) => {
     if (res.headersSent) return next(err);
     const status = Number.isInteger(err.status) ? err.status : 500;

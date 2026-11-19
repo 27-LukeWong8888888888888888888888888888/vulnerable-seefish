@@ -1,27 +1,6 @@
 'use strict';
 
-/*
- * Bugfix regression suite (pre-release bug sweep) — run inside
- * the api container together with the other suites:
- *   docker compose exec api node --test services/api/test/core.test.js \
- *     services/api/test/reservations.test.js services/api/test/field-ops.test.js \
- *     services/api/test/bugfix.test.js
- *
- * Covers the post-fix behavior:
- *   B3  overlapping active reservations rejected (create + update),
- *       touching windows still allowed, cancelled rows no longer block
- *   B4  /update rejects temporally impossible effective windows
- *   B5  cancelled/completed are terminal — no further modification
- *   B6  reservations cannot be created for maintenance/retired equipment
- *   B7  equipment/create returns 400 (not 500) for an invalid status value
- *
- * Cleanup is marker-based: every reservation this suite creates carries a
- * purpose starting 'BUGFIX-' and the one equipment row an asset_tag starting
- * 'EQ-BUGFIX-'. The windows sit 40–43 days out so the reservations-suite
- * janitor (which deletes rows ending more than 45 days out) never races this
- * suite, and equipment ids 1, 3 and 5 (mutated or booked by the other
- * suites) are never used.
- */
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -86,8 +65,7 @@ async function login(session, username, password) {
   return r.decrypted.token;
 }
 
-// Booking window `dayOffset` days out, `startHour`–`endHour` UTC. The suite
-// only uses offsets 40–43 so no row ever ends more than 45 days out.
+
 function win(dayOffset, startHour, endHour) {
   const d = new Date(Date.now() + dayOffset * 24 * 3600 * 1000);
   d.setUTCHours(startHour, 0, 0, 0);

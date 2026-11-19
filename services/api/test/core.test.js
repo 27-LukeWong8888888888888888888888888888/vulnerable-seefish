@@ -1,18 +1,6 @@
 'use strict';
 
-/*
- * Core verification — run inside the api container:
- *   docker compose exec api node --test test/
- *
- * Covers the approved core checklist:
- *   1  /health plaintext                       8  valid login via envelope
- *   2  /api/session/key plaintext              9  invalid credentials rejected
- *   3  valid encrypted request succeeds       10  role restrictions
- *   4  missing sid rejected                   11  equipment retrieval
- *   5  unknown sid rejected                   12  fault-report operations
- *   6  expired/revoked sid rejected           13  lab-client.js end-to-end
- *   7  invalid ciphertext rejected            +   plaintext requests rejected
- */
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { execFile } = require('node:child_process');

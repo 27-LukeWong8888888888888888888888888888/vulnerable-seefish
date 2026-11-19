@@ -1,16 +1,6 @@
 'use strict';
 
-/*
- * Application authentication tokens (synthetic, coursework-grade mechanism).
- *
- * Deliberately separate from the RC4 transport session in sessions.js:
- *   - RC4 session  = envelope key for one HTTP conversation (issued by
- *                    POST /api/session/key, key sent readable).
- *   - app token    = proves WHICH user is talking, minted by
- *                    POST /api/auth/login, random and opaque.
- *
- * Tokens live in process memory: an API restart logs everyone out.
- */
+
 const crypto = require('node:crypto');
 
 const tokens = new Map();

@@ -1,16 +1,6 @@
 'use strict';
 
-/*
- * Application authentication, inside the encrypted envelope:
- *   POST /api/auth/login   {username, password} -> {token, user}
- *   POST /api/auth/logout  {token} -> {ok: true}
- *   POST /api/auth/me      {token} -> {user}
- *
- * Passwords are verified against the bcrypt hashes seeded with pgcrypto:
- * crypt($2, password_hash) recomputes the hash with the stored salt and
- * matches only when the password is right. Parameterized; no MD5, no
- * plaintext password storage.
- */
+
 const express = require('express');
 const { query } = require('../db');
 const { issueToken, revokeToken } = require('../appTokens');

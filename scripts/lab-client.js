@@ -1,29 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-/*
- * lab-client.js — CLI helper for the RC4 encrypted application protocol.
- *
- * Performs the full cycle: request /api/session/key, cache the session,
- * encrypt an arbitrary JSON payload, send it to any endpoint, decrypt the
- * envelope response, print the JSON. It is the shared helper for working
- * with the protocol and its documented weaknesses.
- *
- * Usage:
- *   node scripts/lab-client.js --endpoint /api/auth/login \
- *       --payload '{"username":"alice","password":"StudentPass!23"}'
- *
- * Options:
- *   --endpoint, -e   API path, e.g. /api/equipment        (required)
- *   --method,  -m    HTTP method                         (default POST)
- *   --payload, -p    JSON string sent as the request body (default {})
- *   --base,    -b    API base URL                        (default http://127.0.0.1:3000)
- *   --fresh,   -f    force a new /api/session/key handshake
- *   --no-auth        do not attach the cached login token to the payload
- *
- * Session cache: a small JSON file (default: .lab-session.json next to this
- * script; override with LAB_SESSION_FILE) holding sid, key and login token.
- */
+
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -130,7 +108,6 @@ async function main() {
     }
     console.log(JSON.stringify(decrypted, null, 2));
   } else {
-    // Plaintext error before a valid session existed (e.g. unknown_session).
     console.error(`[lab-client] plaintext response (HTTP ${res.status}):`);
     console.log(JSON.stringify(raw, null, 2));
   }

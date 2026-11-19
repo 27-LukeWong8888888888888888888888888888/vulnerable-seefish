@@ -1,12 +1,6 @@
 'use strict';
 
-/*
- * Application-authentication middleware.
- *
- * The client proves its identity by putting the login-issued token into the
- * DECRYPTED payload of every request: { "token": "labtok-...", ...fields }.
- * It therefore travels inside the RC4 envelope, never in a readable header.
- */
+
 const { resolveToken } = require('./appTokens');
 
 function requireAuth(req, res, next) {

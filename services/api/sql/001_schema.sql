@@ -1,8 +1,4 @@
--- Campus Laboratory Booking — database schema
--- Applied automatically on first container start via /docker-entrypoint-initdb.d.
 
--- pgcrypto provides gen_salt()/crypt() so seed passwords can be hashed with
--- bcrypt entirely inside the database (no host tooling required).
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE users (
@@ -14,9 +10,7 @@ CREATE TABLE users (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Server-side store for the RC4 session keys issued by POST /api/session/key.
--- The key is handed to the client as Base64 in readable JSON over plain
--- HTTP — that exposure is intentional and documented.
+
 CREATE TABLE rc4_sessions (
   session_id TEXT PRIMARY KEY,
   key_b64    TEXT NOT NULL,
@@ -25,8 +19,7 @@ CREATE TABLE rc4_sessions (
   revoked    BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Synthetic dummy secrets. The field-service row mirrors the token that is
--- packaged inside the Electron app (see services/api/src/fieldServiceToken.js).
+
 CREATE TABLE service_secrets (
   id    SERIAL PRIMARY KEY,
   name  TEXT NOT NULL UNIQUE,

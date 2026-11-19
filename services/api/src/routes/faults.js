@@ -1,19 +1,6 @@
 'use strict';
 
-/*
- * Fault-report endpoints. All protected endpoints are POST (the RC4
- * envelope travels in the request body; fetch clients cannot send GET
- * bodies).
- *
- *   POST /api/fault-reports/list    {token}                       tech/admin: all;
- *                                                                 student: own only
- *   POST /api/fault-reports/create  {token, equipmentId, title, description?, severity?}
- *                                                                 any authenticated user
- *   POST /api/fault-reports/update  {token, id, status?, resolution?}
- *                                                                 technician, admin
- *
- * All queries parameterized.
- */
+
 const express = require('express');
 const { query } = require('../db');
 const { requireRole } = require('../requireAuth');

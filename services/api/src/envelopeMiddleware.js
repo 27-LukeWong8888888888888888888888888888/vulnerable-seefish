@@ -1,21 +1,6 @@
 'use strict';
 
-/*
- * RC4 envelope middleware — the "encrypted application protocol".
- *
- * Request:  { "sid": "...", "alg": "RC4", "data": "<base64 ciphertext>" }
- * Response: same envelope, encrypted with the same session key.
- *
- * Rejections (all plaintext JSON, since without a valid session there is
- * no shared key to encrypt an error with):
- *   missing envelope / missing sid / missing data / wrong alg
- *   malformed ciphertext (bad base64, or bytes that are not valid UTF-8)
- *   malformed decrypted JSON
- *   unknown session / revoked session / expired session
- *
- * Once a session is valid, the response is sealed in the same envelope —
- * including error responses produced by downstream handlers.
- */
+
 const LabRC4 = require('../../../shared/protocol/rc4.js');
 const LabEnvelope = require('../../../shared/protocol/envelope.js');
 const { findSession } = require('./sessions');
@@ -75,8 +60,7 @@ function envelopeMiddleware(req, res, next) {
       req.body = payload;
       req.labSession = session;
 
-      // Seal every response for the rest of this request (including errors
-      // raised by route handlers) with the same session key.
+      
       const origJson = res.json.bind(res);
       res.json = (body) => {
         res.set('X-Lab-Encrypted', LabEnvelope.ALG);
